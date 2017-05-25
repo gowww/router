@@ -9,7 +9,7 @@ import (
 
 // The Router is the main structure of this package.
 type Router struct {
-	trees map[string]*[]*node
+	trees map[string]*[]*node // trees is a map of methods with their path nodes.
 }
 
 type node struct {
@@ -26,23 +26,42 @@ func New() *Router {
 
 // Handle adds a route with method, path and handler.
 func (rt *Router) Handle(method, path string, h http.Handler) {
-	if len(method) == 0 {
-		panic(fmt.Errorf("router: route %q method is empty", path))
-	}
 	if len(path) == 0 || path[0] != '/' {
-		panic(fmt.Errorf("router: route path %q must begin with %q", path, "/"))
+		panic(fmt.Errorf("router: path %q must begin with %q", path, "/"))
 	}
+
+	// Extract params from path
+	var params []string
+	var paramStart, paramEnd int
+	for {
+		paramStart = strings.IndexByte(path[paramEnd:], ':')
+		if paramStart == -1 { // No more params: make node.
+			break
+		}
+		paramStart += paramEnd
+		paramStart++ // Position on parameter name instead of ":".
+		paramEnd = strings.IndexByte(path[paramStart:], '/')
+		if paramEnd == -1 { // Parameter is at the end the path.
+			params = append(params, path[paramStart:len(path)])
+			break
+		}
+		paramEnd += paramStart
+		params = append(params, path[paramStart:paramEnd])
+	}
+
+	// Get (or set) tree for method
 	tree := rt.trees[method]
 	if tree == nil {
 		n := make([]*node, 0)
 		rt.trees[method] = &n
 		tree = &n
 	}
-	makeNode(tree, path, h)
+
+	makeNode(tree, path, params, h)
 }
 
 // makeNode adds a node to the tree.
-func makeNode(nodes *[]*node, s string, h http.Handler) {
+func makeNode(nodes *[]*node, s string, params []string, h http.Handler) {
 LoopNodes:
 	for _, n := range *nodes {
 		minlen := len(n.s)
@@ -58,8 +77,8 @@ LoopNodes:
 				*n = node{
 					s: n.s[:i],
 					children: []*node{
-						{s: n.s[i:], children: n.children, handler: n.handler},
-						{s: s[i:], handler: h},
+						{s: n.s[i:], params: n.params, children: n.children, handler: n.handler},
+						{s: s[i:], params: params, handler: h},
 					},
 				}
 				return
@@ -69,12 +88,12 @@ LoopNodes:
 			*n = node{
 				s: n.s[:len(s)],
 				children: []*node{
-					{s: n.s[len(s):], children: n.children, handler: n.handler},
+					{s: n.s[len(s):], params: n.params, children: n.children, handler: n.handler},
 				},
 				handler: h,
 			}
 		} else if len(s) > len(n.s) { // n.s fully matched first part of s: see subnodes for the rest.
-			makeNode(&n.children, s[len(n.s):], h)
+			makeNode(&n.children, s[len(n.s):], params, h)
 		} else { // s == n.s and no rest: node hasn't handler or route is duplicated.
 			if n.handler == nil {
 				n.handler = h
@@ -84,27 +103,27 @@ LoopNodes:
 		}
 		return
 	}
-	*nodes = append(*nodes, &node{s: s, handler: h}) // Not a single byte match on same-level nodes: append a new one.
+	*nodes = append(*nodes, &node{s: s, params: params, handler: h}) // Not a single byte match on same-level nodes: append a new one.
 }
 
 func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	trees := rt.trees[r.Method]
 	if trees != nil {
-		h := findNode(*trees, r.URL.Path)
-		if h != nil {
-			h.ServeHTTP(w, r)
+		n := findNode(*trees, r.URL.Path)
+		if n != nil && n.handler != nil {
+			n.handler.ServeHTTP(w, r)
 			return
 		}
 	}
 	http.NotFound(w, r)
 }
 
-func findNode(nodes []*node, s string) http.Handler {
+func findNode(nodes []*node, s string) *node {
 	for _, n := range nodes {
 		if strings.HasPrefix(s, n.s) {
 			s = s[len(n.s):]
 			if len(s) == 0 {
-				return n.handler
+				return n
 			}
 			return findNode(n.children, s)
 		}
