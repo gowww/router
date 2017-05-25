@@ -1,6 +1,4 @@
-/*
-Package router provides a fast HTTP router.
-*/
+// Package router provides a fast HTTP router.
 package router
 
 import (
@@ -125,7 +123,7 @@ func (rt *Router) String() (s string) {
 }
 
 func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%q (%v)\n", strings.Repeat("\t", level), n.s, fmt.Sprint(n.handler))
+	s += fmt.Sprintf("%s%q  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
 	for _, n := range n.children {
 		s += n.string(level + 1)
 	}
