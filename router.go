@@ -43,10 +43,13 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 		paramEnd = strings.IndexByte(path[paramStart:], '/')
 		if paramEnd == -1 { // Parameter is at the end the path.
 			params = append(params, path[paramStart:len(path)])
+			path = path[:paramStart]
 			break
 		}
 		paramEnd += paramStart
 		params = append(params, path[paramStart:paramEnd])
+		path = path[:paramStart] + path[paramEnd:]
+		paramEnd -= paramEnd - paramStart
 	}
 
 	// Get (or set) tree for method
@@ -86,7 +89,8 @@ LoopNodes:
 		}
 		if len(s) < len(n.s) { // s fully matched first part of n.s: split node.
 			*n = node{
-				s: n.s[:len(s)],
+				s:      n.s[:len(s)],
+				params: params,
 				children: []*node{
 					{s: n.s[len(s):], params: n.params, children: n.children, handler: n.handler},
 				},
@@ -94,8 +98,9 @@ LoopNodes:
 			}
 		} else if len(s) > len(n.s) { // n.s fully matched first part of s: see subnodes for the rest.
 			makeNode(&n.children, s[len(n.s):], params, h)
-		} else { // s == n.s and no rest: node hasn't handler or route is duplicated.
+		} else { // s == n.s and no rest: node has no handler or route is duplicated.
 			if n.handler == nil {
+				n.params = params
 				n.handler = h
 				return
 			}
