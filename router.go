@@ -8,9 +8,9 @@ import (
 )
 
 // The Router is the main structure of this package.
-// TODO: Have custom "not found" handler.
 type Router struct {
-	trees map[string]*[]*node // trees is a map of methods with their path nodes.
+	NotFoundHandler http.Handler
+	trees           map[string]*[]*node // trees is a map of methods with their path nodes.
 }
 
 type node struct {
@@ -26,7 +26,10 @@ func (n *node) isWildcard() bool {
 
 // New returns a fresh rounting unit.
 func New() *Router {
-	return &Router{trees: make(map[string]*[]*node)}
+	return &Router{
+		NotFoundHandler: http.NotFoundHandler(),
+		trees:           make(map[string]*[]*node),
+	}
 }
 
 // Handle adds a route with method, path and handler.
@@ -154,7 +157,11 @@ func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.NotFound(w, r)
+	if rt.NotFoundHandler == nil {
+		http.NotFound(w, r)
+	} else {
+		rt.NotFoundHandler.ServeHTTP(w, r)
+	}
 }
 
 func findNode(nodes []*node, path string, params *[]string) *node {
