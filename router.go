@@ -10,25 +10,14 @@ import (
 // The Router is the main structure of this package.
 type Router struct {
 	NotFoundHandler http.Handler
-	trees           map[string]*[]*node // trees is a map of methods with their path nodes.
-}
-
-type node struct {
-	s        string
-	params   []string // Parameter's names from the parent node to this one.
-	children []*node
-	handler  http.Handler
-}
-
-func (n *node) isWildcard() bool {
-	return n.s[len(n.s)-1] == '/' && len(n.children) == 0
+	trees           map[string]*nodes // trees is a map of methods with their path nodes.
 }
 
 // New returns a fresh rounting unit.
 func New() *Router {
 	return &Router{
 		NotFoundHandler: http.NotFoundHandler(),
-		trees:           make(map[string]*[]*node),
+		trees:           make(map[string]*nodes),
 	}
 }
 
@@ -64,132 +53,45 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 	// Get (or set) tree for method.
 	tree := rt.trees[method]
 	if tree == nil {
-		n := make([]*node, 0)
+		n := make(nodes, 0)
 		rt.trees[method] = &n
 		tree = &n
 	}
 
 	// Put parameters in their own node.
 	for _, pos := range paramsPos(path) {
-		makeNode(tree, path[:pos], nil, nil) // Make node for part before parameter.
+		tree.makeChild(path[:pos], nil, nil) // Make node for part before parameter.
 		if pos+1 < len(path) {               // Parameter doesn't close the path: make node (whithout handler) for it.
-			makeNode(tree, path[:pos+1], nil, nil)
+			tree.makeChild(path[:pos+1], nil, nil)
 		}
 	}
-	makeNode(tree, path, params, h)
+	tree.makeChild(path, params, h)
 
 	// TODO: Sort trees (most subnodes on top and plain strings before parameters).
 }
 
-// paramsPos returns a slice of ':' positions in s.
-func paramsPos(s string) (pos []int) {
-	for i := 0; i < len(s); i++ {
-		p := strings.IndexByte(s[i:], ':')
-		if p == -1 {
-			break
-		}
-		pos = append(pos, p+i)
-		i = p + i
-	}
-	return
-}
-
-// makeNode adds a node to the tree.
-func makeNode(nodes *[]*node, path string, params []string, handler http.Handler) {
-NodesLoop:
-	for _, n := range *nodes {
-		minlen := len(n.s)
-		if len(path) < minlen {
-			minlen = len(path)
-		}
-		for i := 0; i < minlen; i++ {
-			if n.s[i] == path[i] {
-				continue
-			}
-			if i == 0 { // No match from the first byte: see next same-level node.
-				continue NodesLoop
-			}
-			// Difference in the middle of a node: split current node to make subnode and transfer handler to it.
-			*n = node{
-				s: n.s[:i],
-				children: []*node{
-					{s: n.s[i:], params: n.params, children: n.children, handler: n.handler},
-					{s: path[i:], params: params, handler: handler},
-				},
-			}
-			return
-		}
-		if len(path) < len(n.s) { // s fully matched first part of n.s: split node.
-			*n = node{
-				s:      n.s[:len(path)],
-				params: params,
-				children: []*node{
-					{s: n.s[len(path):], params: n.params, children: n.children, handler: n.handler},
-				},
-				handler: handler,
-			}
-		} else if len(path) > len(n.s) { // n.s fully matched first part of s: see subnodes for the rest.
-			makeNode(&n.children, path[len(n.s):], params, handler)
-		} else { // s == n.s and no rest: node has no handler or route is duplicated.
-			if handler == nil { // No handler provided (must be a non-ending path parameter): don't overwrite.
-				return
-			}
-			if n.handler != nil { // Handler provided but n.handler already set: route is duplicated.
-				panic(fmt.Errorf("router: two or more routes have same path"))
-			}
-			n.params = params
-			n.handler = handler
-		}
-		return
-	}
-	*nodes = append(*nodes, &node{s: path, params: params, handler: handler}) // Not a single byte match on same-level nodes: append a new one.
-}
-
 func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: Clean path.
+	// Clean path
+	if len(r.URL.Path) > 1 && r.URL.Path[len(r.URL.Path)-1] == '/' {
+		http.Redirect(w, r, r.URL.Path[:len(r.URL.Path)-1], http.StatusPermanentRedirect)
+	}
+
 	trees := rt.trees[r.Method]
 	if trees != nil {
 		var params []string
-		n := findNode(*trees, r.URL.Path, &params)
+		n := trees.findChild(r.URL.Path, &params)
 		// TODO: Store parameter values in request.
 		if n != nil && n.handler != nil {
 			n.handler.ServeHTTP(w, r)
 			return
 		}
 	}
+
 	if rt.NotFoundHandler == nil {
 		http.NotFound(w, r)
-	} else {
-		rt.NotFoundHandler.ServeHTTP(w, r)
+		return
 	}
-}
-
-func findNode(nodes []*node, path string, params *[]string) *node {
-	for _, n := range nodes {
-		if n.s == ":" { // Handle parameter node.
-			paramEnd := strings.IndexByte(path, '/')
-			if paramEnd == -1 { // Path ends with the parameter.
-				if n.handler != nil { // Performance: append parameter only if the node has a handler (otherwise useless).
-					*params = append(*params, path)
-				}
-				return n
-			}
-			*params = append(*params, path[:paramEnd])
-			return findNode(n.children, path[paramEnd:], params)
-		}
-		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
-			continue
-		}
-		if n.isWildcard() {
-			*params = append(*params, path[len(n.s):])
-			return n
-		}
-		if len(path) == len(n.s) { // Node matched until the end of path.
-			return n
-		}
-		return findNode(n.children, path[len(n.s):], params)
-	}
-	return nil
+	rt.NotFoundHandler.ServeHTTP(w, r)
 }
 
 func (rt *Router) String() (s string) {
@@ -202,10 +104,15 @@ func (rt *Router) String() (s string) {
 	return
 }
 
-func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%q  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
-	for _, n := range n.children {
-		s += n.string(level + 1)
+// paramsPos returns a slice of ':' positions in s.
+func paramsPos(s string) (pos []int) {
+	for i := 0; i < len(s); i++ {
+		p := strings.IndexByte(s[i:], ':')
+		if p == -1 {
+			break
+		}
+		pos = append(pos, p+i)
+		i = p + i
 	}
 	return
 }
