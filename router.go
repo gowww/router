@@ -154,7 +154,18 @@ func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func findNode(nodes []*node, path string, params *[]string) *node {
 	for _, n := range nodes {
-		// TODO: Handle parameters.
+		// Handle parameter.
+		if n.s == ":" {
+			paramEnd := strings.IndexByte(path, '/')
+			if paramEnd == -1 { // Path ends with the parameter.
+				if n.handler != nil { // Append parameter only if node has handler to save time.
+					*params = append(*params, path)
+				}
+				return n
+			}
+			*params = append(*params, path[:paramEnd])
+			return findNode(n.children, path[paramEnd:], params)
+		}
 		// TODO: Handle ending '/' as wildcard.
 		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
 			continue
