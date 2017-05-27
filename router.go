@@ -20,12 +20,17 @@ type node struct {
 	handler  http.Handler
 }
 
+func (n *node) isWildcard() bool {
+	return n.s[len(n.s)-1] == '/' && len(n.children) == 0
+}
+
 // New returns a fresh rounting unit.
 func New() *Router {
 	return &Router{trees: make(map[string]*[]*node)}
 }
 
 // Handle adds a route with method, path and handler.
+// TODO: Specify in doc that "/path" and "/path/" (trailing slash) are 2 different routes.
 func (rt *Router) Handle(method, path string, h http.Handler) {
 	if len(path) == 0 || path[0] != '/' {
 		panic(fmt.Errorf("router: path %q must begin with %q", path, "/"))
@@ -154,11 +159,10 @@ func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func findNode(nodes []*node, path string, params *[]string) *node {
 	for _, n := range nodes {
-		// Handle parameter.
-		if n.s == ":" {
+		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
 			if paramEnd == -1 { // Path ends with the parameter.
-				if n.handler != nil { // Append parameter only if node has handler to save time.
+				if n.handler != nil { // Performance: append parameter only if the node has a handler (otherwise useless).
 					*params = append(*params, path)
 				}
 				return n
@@ -166,9 +170,12 @@ func findNode(nodes []*node, path string, params *[]string) *node {
 			*params = append(*params, path[:paramEnd])
 			return findNode(n.children, path[paramEnd:], params)
 		}
-		// TODO: Handle ending '/' as wildcard.
 		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
 			continue
+		}
+		if n.isWildcard() {
+			*params = append(*params, path[len(n.s):])
+			return n
 		}
 		if len(path) == len(n.s) { // Node matched until the end of path.
 			return n
