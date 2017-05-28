@@ -87,16 +87,29 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 }
 
 // Get makes a route for GET method.
-func (rt *Router) Get(path string, handler http.Handler) { rt.Handle("GET", path, handler) }
+func (rt *Router) Get(path string, handler http.Handler) {
+	rt.Handle(http.MethodGet, path, handler)
+}
 
 // Post makes a route for POST method.
-func (rt *Router) Post(path string, handler http.Handler) { rt.Handle("POST", path, handler) }
+func (rt *Router) Post(path string, handler http.Handler) {
+	rt.Handle(http.MethodPost, path, handler)
+}
 
 // Put makes a route for PUT method.
-func (rt *Router) Put(path string, handler http.Handler) { rt.Handle("PUT", path, handler) }
+func (rt *Router) Put(path string, handler http.Handler) {
+	rt.Handle(http.MethodPut, path, handler)
+}
+
+// Patch makes a route for PATCH method.
+func (rt *Router) Patch(path string, handler http.Handler) {
+	rt.Handle(http.MethodPatch, path, handler)
+}
 
 // Delete makes a route for DELETE method.
-func (rt *Router) Delete(path string, handler http.Handler) { rt.Handle("DELETE", path, handler) }
+func (rt *Router) Delete(path string, handler http.Handler) {
+	rt.Handle(http.MethodDelete, path, handler)
+}
 
 func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Remove trailing slash.
@@ -105,6 +118,8 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
 		return
 	}
+
+	// TODO: Handle OPTIONS request.
 
 	if trees := rt.trees[r.Method]; trees != nil {
 		var params []string
