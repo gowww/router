@@ -2,9 +2,17 @@
 package router
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+)
+
+type contextKey int
+
+// Context keys
+const (
+	contextKeyParameters contextKey = iota
 )
 
 // The Router is the main structure of this package.
@@ -102,7 +110,17 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var params []string
 		n := trees.findChild(r.URL.Path, &params)
 		if n != nil && n.handler != nil {
-			// TODO: Store parameter values in request.
+			// Store parameters in request's context.
+			if len(n.params) > 0 {
+				pm := make(map[string]string)
+				for i, param := range n.params {
+					pm[param] = params[i]
+				}
+				if len(params) > len(n.params) { // One params over n.params: it's the wildcard.
+					pm["*"] = params[len(params)-1]
+				}
+				r = r.WithContext(context.WithValue(r.Context(), contextKeyParameters, pm))
+			}
 			n.handler.ServeHTTP(w, r)
 			return
 		}
@@ -113,6 +131,16 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.NotFound(w, r)
 	}
+}
+
+// Parameter returns the value of path parameter.
+func Parameter(r *http.Request, key string) string {
+	params, ok := r.Context().Value(contextKeyParameters).(map[string]string)
+	if !ok {
+		return ""
+	}
+	param, _ := params[key]
+	return param
 }
 
 // paramsPos returns a slice of ':' positions in s.
