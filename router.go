@@ -16,14 +16,23 @@ type Router struct {
 // New returns a fresh rounting unit.
 func New() *Router {
 	return &Router{
-		NotFoundHandler: http.NotFoundHandler(),
-		trees:           make(map[string]*nodes),
+		trees: make(map[string]*nodes),
 	}
+}
+
+func (rt *Router) String() (s string) {
+	for method, nodes := range rt.trees {
+		s += method + "\n"
+		for _, n := range *nodes {
+			s += n.string(1)
+		}
+	}
+	return
 }
 
 // Handle adds a route with method, path and handler.
 // TODO: Specify in doc that "/path" and "/path/" (trailing slash) are 2 different routes.
-func (rt *Router) Handle(method, path string, h http.Handler) {
+func (rt *Router) Handle(method, path string, handler http.Handler) {
 	if len(path) == 0 || path[0] != '/' {
 		panic(fmt.Errorf("router: path %q must begin with %q", path, "/"))
 	}
@@ -65,56 +74,45 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 			tree.makeChild(path[:pos+1], nil, nil)
 		}
 	}
-	tree.makeChild(path, params, h)
+	tree.makeChild(path, params, handler)
 	tree.sort()
 }
 
-// Get makes a GET route.
-func (rt *Router) Get(path string, h http.Handler) { rt.Handle("GET", path, h) }
+// Get makes a route for GET method.
+func (rt *Router) Get(path string, handler http.Handler) { rt.Handle("GET", path, handler) }
 
-// Post makes a POST route.
-func (rt *Router) Post(path string, h http.Handler) { rt.Handle("POST", path, h) }
+// Post makes a route for POST method.
+func (rt *Router) Post(path string, handler http.Handler) { rt.Handle("POST", path, handler) }
 
-// Put makes a PUT route.
-func (rt *Router) Put(path string, h http.Handler) { rt.Handle("PUT", path, h) }
+// Put makes a route for PUT method.
+func (rt *Router) Put(path string, handler http.Handler) { rt.Handle("PUT", path, handler) }
 
-// Delete makes a DELETE route.
-func (rt *Router) Delete(path string, h http.Handler) { rt.Handle("DELETE", path, h) }
+// Delete makes a route for DELETE method.
+func (rt *Router) Delete(path string, handler http.Handler) { rt.Handle("DELETE", path, handler) }
 
-func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Clean path
+func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Remove trailing slash.
 	if len(r.URL.Path) > 1 && r.URL.Path[len(r.URL.Path)-1] == '/' {
 		r.URL.Path = r.URL.Path[:len(r.URL.Path)-1]
 		http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
 		return
 	}
 
-	trees := rt.trees[r.Method]
-	if trees != nil {
+	if trees := rt.trees[r.Method]; trees != nil {
 		var params []string
 		n := trees.findChild(r.URL.Path, &params)
-		// TODO: Store parameter values in request.
 		if n != nil && n.handler != nil {
+			// TODO: Store parameter values in request.
 			n.handler.ServeHTTP(w, r)
 			return
 		}
 	}
 
-	if rt.NotFoundHandler == nil {
+	if rt.NotFoundHandler != nil {
+		rt.NotFoundHandler.ServeHTTP(w, r)
+	} else {
 		http.NotFound(w, r)
-		return
 	}
-	rt.NotFoundHandler.ServeHTTP(w, r)
-}
-
-func (rt *Router) String() (s string) {
-	for method, nodes := range rt.trees {
-		s += method + "\n"
-		for _, n := range *nodes {
-			s += n.string(1)
-		}
-	}
-	return
 }
 
 // paramsPos returns a slice of ':' positions in s.
