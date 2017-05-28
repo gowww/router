@@ -69,6 +69,18 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 	tree.sort()
 }
 
+// Get makes a GET route.
+func (rt *Router) Get(path string, h http.Handler) { rt.Handle("GET", path, h) }
+
+// Post makes a POST route.
+func (rt *Router) Post(path string, h http.Handler) { rt.Handle("POST", path, h) }
+
+// Put makes a PUT route.
+func (rt *Router) Put(path string, h http.Handler) { rt.Handle("PUT", path, h) }
+
+// Delete makes a DELETE route.
+func (rt *Router) Delete(path string, h http.Handler) { rt.Handle("DELETE", path, h) }
+
 func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Clean path
 	if len(r.URL.Path) > 1 && r.URL.Path[len(r.URL.Path)-1] == '/' {
