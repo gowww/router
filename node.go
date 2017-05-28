@@ -111,7 +111,11 @@ func (nn *nodes) findChild(path string, params *[]string) *node {
 		if len(path) == len(n.s) { // Node matched until the end of path.
 			return n
 		}
-		return n.children.findChild(path[len(n.s):], params)
+		child := n.children.findChild(path[len(n.s):], params)
+		if child == nil {
+			continue // No match from children, maybe there is a parameter in next same-level node.
+		}
+		return child
 	}
 	return nil
 }
@@ -119,10 +123,10 @@ func (nn *nodes) findChild(path string, params *[]string) *node {
 // sort puts nodes with most subnodes on top and plain strings before parameter.
 func (nn *nodes) sort() {
 	sort.Slice(*nn, func(i, j int) bool {
-		if (*nn)[i].s == ":" {
+		if (*nn)[i].s == ":" || (*nn)[i].isWildcard() {
 			return false
 		}
-		if (*nn)[j].s == ":" {
+		if (*nn)[j].s == ":" || (*nn)[j].isWildcard() {
 			return true
 		}
 		return (*nn)[i].countChildren() > (*nn)[j].countChildren()

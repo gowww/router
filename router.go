@@ -66,8 +66,6 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 		}
 	}
 	tree.makeChild(path, params, h)
-
-	// TODO: Sort trees (most subnodes on top and plain strings before parameters).
 	tree.sort()
 }
 
