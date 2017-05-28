@@ -68,12 +68,15 @@ func (rt *Router) Handle(method, path string, h http.Handler) {
 	tree.makeChild(path, params, h)
 
 	// TODO: Sort trees (most subnodes on top and plain strings before parameters).
+	tree.sort()
 }
 
 func (rt Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Clean path
 	if len(r.URL.Path) > 1 && r.URL.Path[len(r.URL.Path)-1] == '/' {
-		http.Redirect(w, r, r.URL.Path[:len(r.URL.Path)-1], http.StatusPermanentRedirect)
+		r.URL.Path = r.URL.Path[:len(r.URL.Path)-1]
+		http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
+		return
 	}
 
 	trees := rt.trees[r.Method]

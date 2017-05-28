@@ -4,10 +4,9 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 )
-
-type nodes []*node
 
 type node struct {
 	s        string
@@ -16,9 +15,27 @@ type node struct {
 	handler  http.Handler
 }
 
+func (n *node) string(level int) (s string) {
+	s += fmt.Sprintf("%s%q  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
+	for _, n := range n.children {
+		s += n.string(level + 1)
+	}
+	return
+}
+
 func (n *node) isWildcard() bool {
 	return n.s[len(n.s)-1] == '/' && len(n.children) == 0
 }
+
+func (n *node) countChildren() (i int) {
+	for _, n := range n.children {
+		i++
+		i += n.countChildren()
+	}
+	return
+}
+
+type nodes []*node
 
 // makeChild adds a node to the tree.
 func (nn *nodes) makeChild(path string, params []string, handler http.Handler) {
@@ -99,18 +116,18 @@ func (nn *nodes) findChild(path string, params *[]string) *node {
 	return nil
 }
 
-func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%q  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
-	for _, n := range n.children {
-		s += n.string(level + 1)
+// sort puts nodes with most subnodes on top and plain strings before parameter.
+func (nn *nodes) sort() {
+	sort.Slice(*nn, func(i, j int) bool {
+		if (*nn)[i].s == ":" {
+			return false
+		}
+		if (*nn)[j].s == ":" {
+			return true
+		}
+		return (*nn)[i].countChildren() > (*nn)[j].countChildren()
+	})
+	for _, n := range *nn {
+		n.children.sort()
 	}
-	return
-}
-
-func (n *node) countChildren() (i int) {
-	for _, n := range n.children {
-		i++
-		i += n.countChildren()
-	}
-	return
 }
