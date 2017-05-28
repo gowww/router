@@ -15,7 +15,7 @@ type node struct {
 }
 
 func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%q  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
+	s += fmt.Sprintf("%s%s  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler)
 	for _, n := range n.children {
 		s += n.string(level + 1)
 	}
@@ -119,7 +119,7 @@ func (nn *nodes) findChild(path string, params *[]string) *node {
 	return nil
 }
 
-// sort puts nodes with most subnodes on top and plain strings before parameter.
+// sort puts nodes with most subnodes on top and plain strings before parameter and wildcard.
 func (nn *nodes) sort() {
 	sort.Slice(*nn, func(i, j int) bool {
 		if (*nn)[i].s == ":" || (*nn)[i].isWildcard() {
