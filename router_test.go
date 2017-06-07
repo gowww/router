@@ -48,7 +48,7 @@ func init() {
 func TestHandle(t *testing.T) {
 	fmt.Println(rt)
 	for reqPath, wantedHandler := range reqTests {
-		n, _ := rt.trees["GET"].findChild(true, reqPath, nil)
+		n, _ := rt.trees["GET"].findChild(reqPath, nil)
 		if n == nil {
 			if wantedHandler != nil {
 				t.Errorf("%q not found", reqPath)
@@ -62,7 +62,7 @@ func TestHandle(t *testing.T) {
 func BenchmarkRouter(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for reqPath := range reqTests {
-			rt.trees["GET"].findChild(true, reqPath, nil)
+			rt.trees["GET"].findChild(reqPath, nil)
 		}
 	}
 }
