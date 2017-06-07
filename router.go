@@ -122,8 +122,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Handle OPTIONS request.
 
 	if trees := rt.trees[r.Method]; trees != nil {
-		var params []string
-		n := trees.findChild(r.URL.Path, &params)
+		n, params := trees.findChild(r.URL.Path, nil)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
 			if len(n.params) > 0 {
@@ -144,7 +143,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if rt.NotFoundHandler != nil {
 		rt.NotFoundHandler.ServeHTTP(w, r)
 	} else {
-		http.NotFound(w, r)
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 

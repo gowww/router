@@ -23,7 +23,7 @@ func (n *node) string(level int) (s string) {
 }
 
 func (n *node) isWildcard() bool {
-	return n.s[len(n.s)-1] == '/' && len(n.children) == 0
+	return n.s[len(n.s)-1] == '/'
 }
 
 func (n *node) countChildren() (i int) {
@@ -87,45 +87,40 @@ NodesLoop:
 	*nn = append(*nn, &node{s: path, params: params, handler: handler}) // Not a single byte match on same-level nodes: append a new one.
 }
 
-func (nn nodes) findChild(path string, params *[]string) *node {
+func (nn nodes) findChild(path string, params []string) (*node, []string) {
 	for _, n := range nn {
 		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
 			if paramEnd == -1 { // Path ends with the parameter.
-				if n.handler != nil { // Performance: append parameter only if the node has a handler (otherwise useless).
-					*params = append(*params, path)
-				}
-				return n
+				return n, append(params, path)
 			}
-			*params = append(*params, path[:paramEnd])
-			return n.children.findChild(path[paramEnd:], params)
+			return n.children.findChild(path[paramEnd:], append(params, path[:paramEnd]))
 		}
 		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
 			continue
 		}
-		if n.isWildcard() {
-			*params = append(*params, path[len(n.s):])
-			return n
-		}
 		if len(path) == len(n.s) { // Node matched until the end of path.
-			return n
+			return n, params
 		}
-		child := n.children.findChild(path[len(n.s):], params)
+		child, params2 := n.children.findChild(path[len(n.s):], params)
 		if child == nil {
-			continue // No match from children, maybe there is a parameter in next same-level node.
+			if n.isWildcard() {
+				return n, append(params, path[len(n.s):])
+			}
+			continue // No match from children and current node is not a wildcard, maybe there is a parameter in next same-level node.
 		}
-		return child
+		return child, params2
 	}
-	return nil
+	return nil, nil
 }
 
 // sort puts nodes with most subnodes on top and plain strings before parameter and wildcard.
 func (nn nodes) sort() {
 	sort.Slice(nn, func(i, j int) bool {
-		if nn[i].s == ":" || nn[i].isWildcard() {
+		if nn[i].s == ":" {
 			return false
 		}
-		if nn[j].s == ":" || nn[j].isWildcard() {
+		if nn[j].s == ":" {
 			return true
 		}
 		return nn[i].countChildren() > nn[j].countChildren()
