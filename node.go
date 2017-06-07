@@ -113,7 +113,7 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 		}
 		child, params2 := n.children.findChild(path[len(n.s):], params)
 		if child == nil {
-			if n.isWildcard() && !(n.firstLevel && len(n.children) > 0) { // If node is a wildcard, don't use it when it's first in tree and has children.
+			if n.isWildcard() && !(n.firstLevel && (n.s == "/" || len(n.children) > 0)) { // If node is a wildcard, don't use it when it's first in tree and its root or has children.
 				if n.handler == nil {
 					return nil, nil
 				}
