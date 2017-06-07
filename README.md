@@ -1,6 +1,15 @@
 # [![gowww](https://avatars.githubusercontent.com/u/18078923?s=20)](https://github.com/gowww) router [![GoDoc](https://godoc.org/github.com/gowww/router?status.svg)](https://godoc.org/github.com/gowww/router) [![Build](https://travis-ci.org/gowww/router.svg?branch=master)](https://travis-ci.org/gowww/router) [![Coverage](https://coveralls.io/repos/github/gowww/router/badge.svg?branch=master)](https://coveralls.io/github/gowww/router?branch=master) [![Go Report](https://goreportcard.com/badge/github.com/gowww/router)](https://goreportcard.com/report/github.com/gowww/router)
 
-Package [router](https://godoc.org/github.com/gowww/router) provides a fast HTTP router.
+Package [router](https://godoc.org/github.com/gowww/router) provides a lightning fast HTTP router.
+
+## Features
+
+  - Full compatibility with the [http.Handler](https://golang.org/pkg/net/http/#Handler) interface
+  - Generic: no magic methods, you provide the handlers
+  - Path parameters, wildcards and smart prioritized routes
+  - No memory allocation during serving (unless for parameters)
+  - Respecting the principle of least surprise
+  - Tested and used in production
 
 ## Special use cases
 

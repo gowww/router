@@ -2,9 +2,8 @@ package router_test
 
 import (
 	"fmt"
-	"net/http"
-
 	"github.com/gowww/router"
+	"net/http"
 )
 
 func Example() {

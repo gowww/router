@@ -1,4 +1,4 @@
-// Package router provides a fast HTTP router.
+// Package router provides a lightning fast HTTP router.
 package router
 
 import (
