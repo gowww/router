@@ -118,7 +118,7 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 			}
 			continue // No match from children and current node is not a wildcard, maybe there is a parameter in next same-level node.
 		}
-		if n.handler == nil {
+		if child.handler == nil {
 			return nil, nil
 		}
 		return child, params2
