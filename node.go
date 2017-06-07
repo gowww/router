@@ -87,8 +87,8 @@ NodesLoop:
 	*nn = append(*nn, &node{s: path, params: params, handler: handler}) // Not a single byte match on same-level nodes: append a new one.
 }
 
-func (nn *nodes) findChild(path string, params *[]string) *node {
-	for _, n := range *nn {
+func (nn nodes) findChild(path string, params *[]string) *node {
+	for _, n := range nn {
 		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
 			if paramEnd == -1 { // Path ends with the parameter.
@@ -120,17 +120,17 @@ func (nn *nodes) findChild(path string, params *[]string) *node {
 }
 
 // sort puts nodes with most subnodes on top and plain strings before parameter and wildcard.
-func (nn *nodes) sort() {
-	sort.Slice(*nn, func(i, j int) bool {
-		if (*nn)[i].s == ":" || (*nn)[i].isWildcard() {
+func (nn nodes) sort() {
+	sort.Slice(nn, func(i, j int) bool {
+		if nn[i].s == ":" || nn[i].isWildcard() {
 			return false
 		}
-		if (*nn)[j].s == ":" || (*nn)[j].isWildcard() {
+		if nn[j].s == ":" || nn[j].isWildcard() {
 			return true
 		}
-		return (*nn)[i].countChildren() > (*nn)[j].countChildren()
+		return nn[i].countChildren() > nn[j].countChildren()
 	})
-	for _, n := range *nn {
+	for _, n := range nn {
 		n.children.sort()
 	}
 }

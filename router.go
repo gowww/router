@@ -83,7 +83,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		}
 	}
 	tree.makeChild(path, params, handler)
-	tree.sort()
+	tree.sort() // Could be done during makeChild for best perfomance.
 }
 
 // Get makes a route for GET method.
