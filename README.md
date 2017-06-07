@@ -7,7 +7,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
   - Full compatibility with the [http.Handler](https://golang.org/pkg/net/http/#Handler) interface
   - Generic: no magic methods, you provide the handlers
   - Path parameters, wildcards and smart prioritized routes
-  - No memory allocation during serving (unless for parameters)
+  - Very low memory allocations during serving
   - Respecting the principle of least surprise
   - Tested and used in production
 

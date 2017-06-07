@@ -23,6 +23,7 @@ var (
 	}
 
 	reqTests = map[string]http.Handler{
+		"/":                           rtTests["/"],
 		"/user":                       rtTests["/user"],
 		"/about":                      rtTests["/:page"],
 		"/user/files/foo":             rtTests["/user/files/"],
@@ -42,14 +43,16 @@ func init() {
 		rt.Patch(path, handler)
 		rt.Delete(path, handler)
 	}
-	fmt.Println(rt)
 }
 
 func TestHandle(t *testing.T) {
+	fmt.Println(rt)
 	for reqPath, wantedHandler := range reqTests {
-		n, _ := rt.trees["GET"].findChild(reqPath, nil)
-		if n == nil && wantedHandler != nil {
-			t.Errorf("%q not found", reqPath)
+		n, _ := rt.trees["GET"].findChild(true, reqPath, nil)
+		if n == nil {
+			if wantedHandler != nil {
+				t.Errorf("%q not found", reqPath)
+			}
 		} else if reflect.ValueOf(n.handler) != reflect.ValueOf(wantedHandler) {
 			t.Errorf("%q handler: want %v, got %v", reqPath, wantedHandler, n.handler)
 		}
@@ -59,7 +62,7 @@ func TestHandle(t *testing.T) {
 func BenchmarkRouter(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for reqPath := range reqTests {
-			rt.trees["GET"].findChild(reqPath, nil)
+			rt.trees["GET"].findChild(true, reqPath, nil)
 		}
 	}
 }

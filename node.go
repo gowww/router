@@ -87,7 +87,7 @@ NodesLoop:
 	*nn = append(*nn, &node{s: path, params: params, handler: handler}) // Not a single byte match on same-level nodes: append a new one.
 }
 
-func (nn nodes) findChild(path string, params []string) (*node, []string) {
+func (nn nodes) findChild(firstLevel bool, path string, params []string) (*node, []string) {
 	for _, n := range nn {
 		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
@@ -97,7 +97,7 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 				}
 				return n, append(params, path)
 			}
-			return n.children.findChild(path[paramEnd:], append(params, path[:paramEnd]))
+			return n.children.findChild(false, path[paramEnd:], append(params, path[:paramEnd]))
 		}
 		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
 			continue
@@ -108,9 +108,9 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 			}
 			return n, params
 		}
-		child, params2 := n.children.findChild(path[len(n.s):], params)
+		child, params2 := n.children.findChild(false, path[len(n.s):], params)
 		if child == nil {
-			if n.isWildcard() {
+			if !firstLevel && n.isWildcard() {
 				if n.handler == nil {
 					return nil, nil
 				}
