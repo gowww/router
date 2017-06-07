@@ -92,6 +92,9 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
 			if paramEnd == -1 { // Path ends with the parameter.
+				if n.handler == nil {
+					return nil, nil
+				}
 				return n, append(params, path)
 			}
 			return n.children.findChild(path[paramEnd:], append(params, path[:paramEnd]))
@@ -100,14 +103,23 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 			continue
 		}
 		if len(path) == len(n.s) { // Node matched until the end of path.
+			if n.handler == nil {
+				return nil, nil
+			}
 			return n, params
 		}
 		child, params2 := n.children.findChild(path[len(n.s):], params)
 		if child == nil {
 			if n.isWildcard() {
+				if n.handler == nil {
+					return nil, nil
+				}
 				return n, append(params, path[len(n.s):])
 			}
 			continue // No match from children and current node is not a wildcard, maybe there is a parameter in next same-level node.
+		}
+		if n.handler == nil {
+			return nil, nil
 		}
 		return child, params2
 	}
