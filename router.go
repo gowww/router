@@ -77,12 +77,12 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 
 	// Put parameters in their own node.
 	for _, pos := range paramsPos(path) {
-		tree.makeChild(path[:pos], nil, nil) // Make node for part before parameter.
-		if pos+1 < len(path) {               // Parameter doesn't close the path: make node (whithout handler) for it.
-			tree.makeChild(path[:pos+1], nil, nil)
+		tree.makeChild(path[:pos], nil, nil, true) // Make node for part before parameter.
+		if pos+1 < len(path) {                     // Parameter doesn't close the path: make node (whithout handler) for it.
+			tree.makeChild(path[:pos+1], nil, nil, true)
 		}
 	}
-	tree.makeChild(path, params, handler)
+	tree.makeChild(path, params, handler, true)
 	tree.sort() // Could be done during makeChild for best performance.
 }
 
@@ -122,7 +122,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Handle OPTIONS request.
 
 	if trees := rt.trees[r.Method]; trees != nil {
-		n, params := trees.findChild(true, r.URL.Path, nil)
+		n, params := trees.findChild(r.URL.Path, nil)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
 			if len(n.params) > 0 {
