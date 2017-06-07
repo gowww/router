@@ -83,7 +83,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		}
 	}
 	tree.makeChild(path, params, handler)
-	tree.sort() // Could be done during makeChild for best perfomance.
+	tree.sort() // Could be done during makeChild for best performance.
 }
 
 // Get makes a route for GET method.
@@ -122,7 +122,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Handle OPTIONS request.
 
 	if trees := rt.trees[r.Method]; trees != nil {
-		n, params := trees.findChild(r.URL.Path, nil)
+		n, params := trees.findChild(true, r.URL.Path, nil)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
 			if len(n.params) > 0 {
