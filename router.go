@@ -56,7 +56,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		paramStart += paramEnd
 		paramStart++ // Position on parameter name instead of ":".
 		paramEnd = strings.IndexByte(path[paramStart:], '/')
-		if paramEnd == -1 { // Parameter is at the end the path.
+		if paramEnd == -1 { // Parameter is at the end of the path.
 			params = append(params, path[paramStart:])
 			path = path[:paramStart]
 			break
