@@ -125,7 +125,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		n, params := trees.findChild(r.URL.Path, nil)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
-			if len(n.params) > 0 {
+			if len(params) > 0 {
 				pm := make(map[string]string)
 				for i, param := range n.params {
 					pm[param] = params[i]
