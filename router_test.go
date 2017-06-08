@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -45,7 +46,7 @@ func init() {
 	}
 }
 
-func TestHandle(t *testing.T) {
+func TestFindChild(t *testing.T) {
 	fmt.Println(rt)
 	for reqPath, wantedHandler := range reqTests {
 		n, _ := rt.trees["GET"].findChild(reqPath, nil)
@@ -57,6 +58,58 @@ func TestHandle(t *testing.T) {
 			t.Errorf("%q handler: want %v, got %v", reqPath, wantedHandler, n.handler)
 		}
 	}
+}
+
+func TestServeHTTP(t *testing.T) {
+	for reqPath, wantedHandler := range reqTests {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", reqPath, nil)
+		rt.ServeHTTP(w, r)
+		if w.Code == http.StatusOK && wantedHandler == nil {
+			t.Errorf("%q must not be found", reqPath)
+		} else if w.Code == http.StatusNotFound && wantedHandler != nil {
+			t.Errorf("%q not found", reqPath)
+		}
+	}
+}
+
+func TestParameters(t *testing.T) {
+	id := "12"
+	office := "london"
+	rt := New()
+	rt.Get("/users/:id/contact/:office", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if v := Parameter(r, "id"); v != id {
+			t.Errorf("id: want %q, got %q", id, v)
+		}
+		if v := Parameter(r, "office"); v != office {
+			t.Errorf("id: want %q, got %q", office, v)
+		}
+		if v := Parameter(r, "unknown"); v != "" {
+			t.Errorf("id: want %q, got %q", "", v)
+		}
+	}))
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/users/"+id+"/contact/"+office, nil)
+	rt.ServeHTTP(w, r)
+}
+
+func TestRedirectTrailingSlash(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/user/", nil)
+	rt.ServeHTTP(w, r)
+	if w.Code != http.StatusMovedPermanently {
+		t.Fail()
+	}
+}
+
+func TestMissingFirstSlash(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fail()
+		}
+	}()
+	rt := New()
+	rt.Get("user", nil)
 }
 
 func BenchmarkRouter(b *testing.B) {

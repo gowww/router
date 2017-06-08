@@ -6,7 +6,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
   - Extreme performance: sub-microsecond routing in normal usage
   - Full compatibility with the [http.Handler](https://golang.org/pkg/net/http/#Handler) interface
-  - Generic: no magic methods, you provide the handlers
+  - Generic: no magic methods, bring your own handlers
   - Path parameters, wildcards and smart prioritized routes
   - Zero memory allocation during serving (unless for parameters)
   - Respecting the principle of least surprise
