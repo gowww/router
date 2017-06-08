@@ -4,7 +4,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 ## Features
 
-  - Extreme performance: sub-microsecond routing in normal usage
+  - Extreme performance: sub-microsecond routing in most cases
   - Full compatibility with the [http.Handler](https://golang.org/pkg/net/http/#Handler) interface
   - Generic: no magic methods, bring your own handlers
   - Path parameters, wildcards and smart prioritized routes
@@ -57,7 +57,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 A named parameter begins with `:` and matches any value until the next `/` in path.
 
-To retreive their values (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
+To retreive it's value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
 It will return the value as a string (empty if the parameter doesn't exist).
 
 Example, with a parameter `:id`:
@@ -125,7 +125,7 @@ rt.Get("/files/movies/:name", http.HandlerFunc(func(w http.ResponseWriter, r *ht
 }))
 ```
 
-Note that a trailing slash in a request path is always trimmed and the client redirected.  
+Note that a trailing slash in a request path is always trimmed and the client redirected (good for SEO).  
 For example, a request for `/files/` will be redirected to `/files` and will never match a `/files/` route.  
 In other words, `/files` and `/files/` are two different routes.
 
@@ -143,7 +143,7 @@ rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static
 
 When a request cannot be matched with a route, a 404 error with an empty body is send by default.
 
-But you can set your own handler (and send an HTML page, for example):
+But you can set your own "not found" handler (and send an HTML page, for example):
 
 ```Go
 rt.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
