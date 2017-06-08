@@ -112,17 +112,14 @@ func (nn nodes) findChild(path string, params []string) (*node, []string) {
 			return n, params
 		}
 		child, params2 := n.children.findChild(path[len(n.s):], params)
-		if child == nil {
-			if n.isWildcard() && !(n.firstLevel && (n.s == "/" || len(n.children) > 0)) { // If node is a wildcard, don't use it when it's first in tree and its root or has children.
+		if child == nil || child.handler == nil {
+			if n.isWildcard() && !(n.firstLevel && (n.s == "/" || len(n.children) > 0)) { // If node is a wildcard, don't use it when it's first in tree and it's root or has children.
 				if n.handler == nil {
 					return nil, nil
 				}
 				return n, append(params, path[len(n.s):])
 			}
 			continue // No match from children and current node is not a wildcard, maybe there is a parameter in next same-level node.
-		}
-		if child.handler == nil {
-			return nil, nil
 		}
 		return child, params2
 	}

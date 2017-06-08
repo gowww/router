@@ -9,67 +9,98 @@ import (
 	"testing"
 )
 
+type rtTest struct {
+	path    string
+	handler http.Handler
+}
+
+type reqTest struct {
+	path   string
+	rtTest *rtTest
+}
+
 var (
 	rt = New()
 
-	rtTests = map[string]http.Handler{
-		"/":                           http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user":                       http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/:page":                      http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user/files/":                http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/users/:id/car":              http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user/:item":                 http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user/contact/home":          http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user/contact/home/dubai":    http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
-		"/user/contact/office/london": http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
+	rtTests = []*rtTest{
+		{path: "/", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/usage", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/us", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/:page", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/:item", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/files/", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/users/:id/carriage", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/users/:id/car", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contact/office/london", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contact/office/losangeles", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contact/home", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contact/home/dubai", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contacted", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 	}
 
-	reqTests = map[string]http.Handler{
-		"/":                           rtTests["/"],
-		"/user":                       rtTests["/user"],
-		"/about":                      rtTests["/:page"],
-		"/user/files/foo":             rtTests["/user/files/"],
-		"/user/files/foo/bar":         rtTests["/user/files/"],
-		"/user/files":                 rtTests["/user/:item"],
-		"/user/contact/office/london": rtTests["/user/contact/office/london"],
-		"/user/contact/office/paris":  nil,
-		"/page/notfound":              nil,
+	reqTests = []*reqTest{
+		{path: "/", rtTest: findRtTest("/")},
+		{path: "/user", rtTest: findRtTest("/user")},
+		{path: "/about", rtTest: findRtTest("/:page")},
+		{path: "/user/files/foo", rtTest: findRtTest("/user/files/")},
+		{path: "/user/files/foo/bar", rtTest: findRtTest("/user/files/")},
+		{path: "/user/files", rtTest: findRtTest("/user/:item")},
+		{path: "/user/contact/office/london", rtTest: findRtTest("/user/contact/office/london")},
+		{path: "/usage", rtTest: findRtTest("/usage")},
+		{path: "/users/notfound", rtTest: nil},
+		{path: "/user/contact/office/lo", rtTest: nil},
+		{path: "/user/contact", rtTest: nil},
+		{path: "/page/notfound", rtTest: nil},
 	}
 )
 
+func findRtTest(path string) *rtTest {
+	for _, t := range rtTests {
+		if t.path == path {
+			return t
+		}
+	}
+	return nil
+}
+
 func init() {
-	for path, handler := range rtTests {
-		rt.Get(path, handler)
-		rt.Post(path, handler)
-		rt.Put(path, handler)
-		rt.Patch(path, handler)
-		rt.Delete(path, handler)
+	for _, rtt := range rtTests {
+		rt.Get(rtt.path, rtt.handler)
+		rt.Post(rtt.path, rtt.handler)
+		rt.Put(rtt.path, rtt.handler)
+		rt.Patch(rtt.path, rtt.handler)
+		rt.Delete(rtt.path, rtt.handler)
 	}
 }
 
 func TestFindChild(t *testing.T) {
 	fmt.Println(rt)
-	for reqPath, wantedHandler := range reqTests {
-		n, _ := rt.trees["GET"].findChild(reqPath, nil)
+	for _, reqt := range reqTests {
+		n, _ := rt.trees["GET"].findChild(reqt.path, nil)
 		if n == nil {
-			if wantedHandler != nil {
-				t.Errorf("%q not found", reqPath)
+			if reqt.rtTest != nil {
+				t.Errorf("%q not found", reqt.path)
 			}
-		} else if reflect.ValueOf(n.handler) != reflect.ValueOf(wantedHandler) {
-			t.Errorf("%q handler: want %v, got %v", reqPath, wantedHandler, n.handler)
+		} else if reqt.rtTest == nil {
+			if n.handler != nil {
+				t.Errorf("%q must not be found", reqt.path)
+			}
+		} else if reflect.ValueOf(n.handler) != reflect.ValueOf(reqt.rtTest.handler) {
+			t.Errorf("%q handler: want %v, got %v", reqt.path, reqt.rtTest.handler, n.handler)
 		}
 	}
 }
 
 func TestServeHTTP(t *testing.T) {
-	for reqPath, wantedHandler := range reqTests {
+	for _, reqt := range reqTests {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", reqPath, nil)
+		r := httptest.NewRequest("GET", reqt.path, nil)
 		rt.ServeHTTP(w, r)
-		if w.Code == http.StatusOK && wantedHandler == nil {
-			t.Errorf("%q must not be found", reqPath)
-		} else if w.Code == http.StatusNotFound && wantedHandler != nil {
-			t.Errorf("%q not found", reqPath)
+		if w.Code == http.StatusOK && reqt.rtTest == nil {
+			t.Errorf("%q must not be found", reqt.path)
+		} else if w.Code == http.StatusNotFound && reqt.rtTest != nil {
+			t.Errorf("%q not found", reqt.path)
 		}
 	}
 }
@@ -158,8 +189,8 @@ func TestNoNotFoundHandler(t *testing.T) {
 
 func BenchmarkRouter(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		for reqPath := range reqTests {
-			rt.trees["GET"].findChild(reqPath, nil)
+		for _, reqt := range reqTests {
+			rt.trees["GET"].findChild(reqt.path, nil)
 		}
 	}
 }
