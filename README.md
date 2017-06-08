@@ -12,50 +12,143 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
   - Respecting the principle of least surprise
   - Tested and used in production
 
-## Parameters
+## Installing
 
-### Named
+1. Get package:
 
-TODO
+	```Shell
+	go get -u github.com/gowww/router
+	````
 
-### Wildcard
+2. Import it in your code:
+
+	```Go
+	import "github.com/gowww/router"
+	```
+
+## Usage
+
+1. Make a new router:
+
+	```Go
+	rt := router.New()
+	```
+
+2. Make a route:
+
+	```Go
+	rt.Handle("GET", "/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Hello")
+	}))
+	```
+
+   Remember that HTTP methods are case-sensitive and uppercase by convention ([RFC 7231 4.1](https://tools.ietf.org/html/rfc7231#section-4.1)).  
+   So you can directly use shortcuts for standard HTTP methods: [Router.Get](https://godoc.org/github.com/gowww/router#Router.Get), [Router.Post](https://godoc.org/github.com/gowww/router#Router.Post), [Router.Put](https://godoc.org/github.com/gowww/router#Router.Put), [Router.Patch](https://godoc.org/github.com/gowww/router#Router.Patch) and [Router.Delete](https://godoc.org/github.com/gowww/router#Router.Delete).
+
+3. Give the router to the server:
+
+	```Go
+	http.ListenAndServe(":8080", rt)
+	```
+
+### Parameters
+
+#### Named
+
+A named parameter begins with `:` and matches any value until the next `/` in path.
+
+To retreive their values (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
+It will return the value as a string (empty if the parameter doesn't exist).
+
+Example, with a parameter `:id`:
+
+```Go
+rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	id := router.Parameter(r, "id")
+	fmt.Fprintf(w, "Page of user #%s", id)
+}))
+```
+
+No surprise, a parameter can be used on the same level as a static route, without conflict:
+
+```Go
+rt.Get("/users/all", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "All users page")
+}))
+
+rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	id := router.Parameter(r, "id")
+	fmt.Fprintf(w, "Page of user #%s", id)
+}))
+```
+
+#### Wildcard
 
 A trailing slash in a route path is significant.  
 It behaves like a wildcard by matching the beginning of the request's path and keeping the rest as a parameter value, under `*`:
 
 ```Go
 rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Get file %s", router.Parameter(r, "*"))
+	filepath := router.Parameter(r, "*")
+	fmt.Fprintf(w, "Get file %s", filepath)
 }))
 ```
 
-## Example
+No surprise, deeper route paths with the same prefix as the wildcard will take precedence, without conflict:
 
 ```Go
-rt := router.New()
+// Will match:
+// 	/files/one
+// 	/files/two
+// 	...
+rt.Get("/files/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	name := router.Parameter(r, "name")
+	fmt.Fprintf(w, "Get root file #%s", name)
+}))
 
-// File server
+// Will match:
+// 	/files/one/...
+// 	/files/two/...
+// 	...
+rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	filepath := router.Parameter(r, "*")
+	fmt.Fprintf(w, "Get file %s", filepath)
+}))
+
+// Will match:
+// 	/files/movies/one
+// 	/files/movies/two
+// 	...
+rt.Get("/files/movies/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	name := router.Parameter(r, "name")
+	fmt.Fprintf(w, "Get movie #%s", name)
+}))
+```
+
+Note that a trailing slash in a request path is always trimmed and the client redirected.  
+For example, a request for `/files/` will be redirected to `/files` and will never match a `/files/` route.  
+In other words, `/files` and `/files/` are two different routes.
+
+### Static files
+
+For serving static files, like for other routes, just bring your own handler.
+
+Exemple, with the standard [net/http.FileServer](https://golang.org/pkg/net/http/#FileServer):
+
+```Go
 rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+```
 
-// Static route
-rt.Get("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello")
-}))
+### Custom "not found" handler
 
-// Path parameter
-rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Get user %s", router.Parameter(r, "id"))
-}))
+When a request cannot be matched with a route, a 404 error with an empty body is send by default.
 
-// Path parameter + Trailing slash for wildcard
-rt.Post("/users/:id/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Post file %s to user %s", router.Parameter(r, "*"), router.Parameter(r, "id"))
-}))
+But you can set your own handler (and send an HTML page, for example):
 
-// Custom "not found"
+```Go
 rt.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 })
-
-http.ListenAndServe(":8080", rt)
 ```
+
+Note that is this case, it's up to you to set the correct status code (normally 404) for the response.

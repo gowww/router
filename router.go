@@ -39,7 +39,6 @@ func (rt *Router) String() (s string) {
 }
 
 // Handle adds a route with method, path and handler.
-// TODO: Specify in doc that "/path" and "/path/" (trailing slash) are 2 different routes.
 func (rt *Router) Handle(method, path string, handler http.Handler) {
 	if len(path) == 0 || path[0] != '/' {
 		panic(fmt.Errorf("router: path %q must begin with %q", path, "/"))
@@ -148,6 +147,7 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Parameter returns the value of path parameter.
+// Result is empty if parameter doesn't exist.
 func Parameter(r *http.Request, key string) string {
 	params, ok := r.Context().Value(contextKeyParameters).(map[string]string)
 	if !ok {
