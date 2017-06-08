@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -93,6 +94,18 @@ func TestParameters(t *testing.T) {
 	rt.ServeHTTP(w, r)
 }
 
+func TestNoParameters(t *testing.T) {
+	rt := New()
+	rt.Get("/user", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if v := Parameter(r, "unknown"); v != "" {
+			t.Errorf("id: want %q, got %q", "", v)
+		}
+	}))
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/user", nil)
+	rt.ServeHTTP(w, r)
+}
+
 func TestRedirectTrailingSlash(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/user/", nil)
@@ -110,6 +123,37 @@ func TestMissingFirstSlash(t *testing.T) {
 	}()
 	rt := New()
 	rt.Get("user", nil)
+}
+
+func TestDuplicatedRoutes(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fail()
+		}
+	}()
+	rt := New()
+	rt.Get("/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	rt.Get("/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	fmt.Println(rt)
+}
+
+func TestNoNotFoundHandler(t *testing.T) {
+	status := http.StatusForbidden
+	body := "foobar"
+	rt := New()
+	rt.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		fmt.Fprint(w, body)
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	rt.ServeHTTP(w, r)
+	if w.Code != status {
+		t.Errorf("status: want %d, got %d", status, w.Code)
+	}
+	if b, _ := ioutil.ReadAll(w.Body); string(b) != body {
+		t.Errorf("status: want %q, got %q", body, string(b))
+	}
 }
 
 func BenchmarkRouter(b *testing.B) {
