@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	// "github.com/DATA-DOG/fastroute"
+	// "github.com/julienschmidt/httprouter"
 )
 
 type rtTest struct {
@@ -77,7 +79,7 @@ func init() {
 func TestFindChild(t *testing.T) {
 	fmt.Println(rt)
 	for _, reqt := range reqTests {
-		n, _ := rt.trees["GET"].findChild(reqt.path, nil)
+		n, _ := rt.trees[http.MethodGet].findChild(reqt.path, nil)
 		if n == nil {
 			if reqt.rtTest != nil {
 				t.Errorf("%q not found", reqt.path)
@@ -95,7 +97,7 @@ func TestFindChild(t *testing.T) {
 func TestServeHTTP(t *testing.T) {
 	for _, reqt := range reqTests {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", reqt.path, nil)
+		r := httptest.NewRequest(http.MethodGet, reqt.path, nil)
 		rt.ServeHTTP(w, r)
 		if w.Code == http.StatusOK && reqt.rtTest == nil {
 			t.Errorf("%q must not be found", reqt.path)
@@ -121,7 +123,7 @@ func TestParameters(t *testing.T) {
 		}
 	}))
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/users/"+id+"/contact/"+office, nil)
+	r := httptest.NewRequest(http.MethodGet, "/users/"+id+"/contact/"+office, nil)
 	rt.ServeHTTP(w, r)
 }
 
@@ -133,13 +135,13 @@ func TestNoParameters(t *testing.T) {
 		}
 	}))
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/user", nil)
+	r := httptest.NewRequest(http.MethodGet, "/user", nil)
 	rt.ServeHTTP(w, r)
 }
 
 func TestRedirectTrailingSlash(t *testing.T) {
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/user/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/user/", nil)
 	rt.ServeHTTP(w, r)
 	if w.Code != http.StatusMovedPermanently {
 		t.Fail()
@@ -168,7 +170,7 @@ func TestDuplicatedRoutes(t *testing.T) {
 	fmt.Println(rt)
 }
 
-func TestNoNotFoundHandler(t *testing.T) {
+func TestNotFoundHandler(t *testing.T) {
 	status := http.StatusForbidden
 	body := "foobar"
 	rt := New()
@@ -177,7 +179,7 @@ func TestNoNotFoundHandler(t *testing.T) {
 		fmt.Fprint(w, body)
 	})
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/", nil)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	rt.ServeHTTP(w, r)
 	if w.Code != status {
 		t.Errorf("status: want %d, got %d", status, w.Code)
@@ -187,10 +189,19 @@ func TestNoNotFoundHandler(t *testing.T) {
 	}
 }
 
-func BenchmarkRouter(b *testing.B) {
+func BenchmarkFindRoute(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, reqt := range reqTests {
-			rt.trees["GET"].findChild(reqt.path, nil)
+			rt.trees[http.MethodGet].findChild(reqt.path, nil)
+		}
+	}
+}
+
+func BenchmarkServeHTTP(b *testing.B) {
+	w := httptest.NewRecorder()
+	for i := 0; i < b.N; i++ {
+		for _, reqt := range reqTests {
+			rt.ServeHTTP(w, httptest.NewRequest(http.MethodGet, reqt.path, nil))
 		}
 	}
 }
