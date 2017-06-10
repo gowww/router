@@ -7,8 +7,6 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
-	// "github.com/DATA-DOG/fastroute"
-	// "github.com/julienschmidt/httprouter"
 )
 
 type rtTest struct {
