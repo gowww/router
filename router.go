@@ -12,7 +12,8 @@ type contextKey int
 
 // Context keys
 const (
-	contextKeyParameters contextKey = iota
+	contextKeyParamsIdx contextKey = iota
+	contextKeyParams
 )
 
 // The Router is the main structure of this package.
@@ -44,45 +45,48 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		panic(fmt.Errorf("router: path %q must begin with %q", path, "/"))
 	}
 
-	// Extract parameters from path.
-	var params []string
-	var paramStart, paramEnd int
-	for {
-		paramStart = strings.IndexByte(path[paramEnd:], ':')
-		if paramStart == -1 { // No more parameters: make node.
-			break
-		}
-		paramStart += paramEnd
-		paramStart++ // Position on parameter name instead of ":".
-		paramEnd = strings.IndexByte(path[paramStart:], '/')
-		if paramEnd == -1 { // Parameter is at the end of the path.
-			params = append(params, path[paramStart:])
-			path = path[:paramStart]
-			break
-		}
-		paramEnd += paramStart
-		params = append(params, path[paramStart:paramEnd])
-		path = path[:paramStart] + path[paramEnd:]
-		paramEnd -= paramEnd - paramStart
-	}
-
 	// Get (or set) tree for method.
-	tree := rt.trees[method]
-	if tree == nil {
-		n := make(nodes, 0)
+	nn := rt.trees[method]
+	if nn == nil {
+		var n nodes
 		rt.trees[method] = &n
-		tree = &n
+		nn = &n
 	}
 
 	// Put parameters in their own node.
-	for _, pos := range paramsPos(path) {
-		tree.makeChild(path[:pos], nil, nil, true) // Make node for part before parameter.
-		if pos+1 < len(path) {                     // Parameter doesn't close the path: make node (whithout handler) for it.
-			tree.makeChild(path[:pos+1], nil, nil, true)
+	parts := splitPath(path)
+	var s string
+	var params map[string]int
+	for i, part := range parts {
+		s += "/"
+		if len(part) > 0 && part[0] == ':' { // It's a parameter.
+			if len(part) < 2 {
+				panic(fmt.Errorf("router: path %q has anonymous field", path))
+			}
+			nn.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
+			if params == nil {
+				params = make(map[string]int)
+			}
+			params[part[1:]] = i   // Store parameter name with part index.
+			s += ":"               // Only keep "/:".
+			if i == len(parts)-1 { // Parameter is the last part: make it with handler.
+				nn.makeChild(s, params, handler, false)
+			} else {
+				nn.makeChild(s, params, nil, false)
+			}
+		} else {
+			s += part
+			if i == len(parts)-1 { // Last part: make it with handler.
+				if isWildcard(s) {
+					if params == nil {
+						params = make(map[string]int)
+					}
+					params["*"] = i
+				}
+				nn.makeChild(s, params, handler, (i == 0 && s == "/"))
+			}
 		}
 	}
-	tree.makeChild(path, params, handler, true)
-	tree.sort() // Could be done during makeChild for best performance.
 }
 
 // Get makes a route for GET method.
@@ -121,18 +125,11 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Handle OPTIONS request.
 
 	if trees := rt.trees[r.Method]; trees != nil {
-		n, params := trees.findChild(r.URL.Path, nil)
+		n := trees.findChild(r.URL.Path)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
-			if len(params) > 0 {
-				pm := make(map[string]string)
-				for i, param := range n.params {
-					pm[param] = params[i]
-				}
-				if len(params) > len(n.params) { // One params over n.params: it's the wildcard.
-					pm["*"] = params[len(params)-1]
-				}
-				r = r.WithContext(context.WithValue(r.Context(), contextKeyParameters, pm))
+			if n.params != nil {
+				r = r.WithContext(context.WithValue(r.Context(), contextKeyParamsIdx, n.params))
 			}
 			n.handler.ServeHTTP(w, r)
 			return
@@ -149,23 +146,35 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Parameter returns the value of path parameter.
 // Result is empty if parameter doesn't exist.
 func Parameter(r *http.Request, key string) string {
-	params, ok := r.Context().Value(contextKeyParameters).(map[string]string)
+	params, ok := r.Context().Value(contextKeyParams).(map[string]string)
+	if ok { // Parameters already parsed.
+		return params[key]
+	}
+	paramsIdx, ok := r.Context().Value(contextKeyParamsIdx).(map[string]int)
 	if !ok {
 		return ""
 	}
-	param, _ := params[key]
-	return param
+	params = make(map[string]string, len(paramsIdx))
+	parts := splitPath(r.URL.Path)
+	for name, idx := range paramsIdx {
+		switch name {
+		case "*":
+			for idx < len(parts) {
+				params[name] += parts[idx]
+				idx++
+			}
+		default:
+			params[name] = parts[idx]
+		}
+	}
+	*r = *r.WithContext(context.WithValue(r.Context(), contextKeyParams, params))
+	return params[key]
 }
 
-// paramsPos returns a slice of ':' positions in s.
-func paramsPos(s string) (pos []int) {
-	for i := 0; i < len(s); i++ {
-		p := strings.IndexByte(s[i:], ':')
-		if p == -1 {
-			break
-		}
-		pos = append(pos, p+i)
-		i = p + i
-	}
-	return
+func isWildcard(s string) bool {
+	return s[len(s)-1] == '/'
+}
+
+func splitPath(path string) []string {
+	return strings.Split(path, "/")[1:]
 }

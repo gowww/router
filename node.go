@@ -8,15 +8,19 @@ import (
 )
 
 type node struct {
-	s          string
-	params     []string // Parameter's names from the parent node to this one.
-	children   nodes
-	handler    http.Handler
-	firstLevel bool // Need to know if node is the first in tree to not use it as wildcard when it had children.
+	s        string
+	params   map[string]int // Parameter's names from the parent node to this one, and their path part index (between "/").
+	children nodes
+	handler  http.Handler
+	isRoot   bool // Need to know if node is root to not use it as wildcard.
+}
+
+func (n *node) String() string {
+	return n.s
 }
 
 func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%s  %v  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler, n.firstLevel)
+	s += fmt.Sprintf("%s%s  %v  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler, n.isRoot)
 	for _, n := range n.children {
 		s += n.string(level + 1)
 	}
@@ -24,7 +28,7 @@ func (n *node) string(level int) (s string) {
 }
 
 func (n *node) isWildcard() bool {
-	return n.s[len(n.s)-1] == '/'
+	return isWildcard(n.s)
 }
 
 func (n *node) countChildren() (i int) {
@@ -38,7 +42,7 @@ func (n *node) countChildren() (i int) {
 type nodes []*node
 
 // makeChild adds a node to the tree.
-func (nn *nodes) makeChild(path string, params []string, handler http.Handler, firstLevel bool) {
+func (nn *nodes) makeChild(path string, params map[string]int, handler http.Handler, isRoot bool) {
 NodesLoop:
 	for _, n := range *nn {
 		minlen := len(n.s)
@@ -59,8 +63,9 @@ NodesLoop:
 					{s: n.s[i:], params: n.params, children: n.children, handler: n.handler},
 					{s: path[i:], params: params, handler: handler},
 				},
-				firstLevel: n.firstLevel,
+				isRoot: n.isRoot,
 			}
+			nn.sort()
 			return
 		}
 		if len(path) < len(n.s) { // s fully matched first part of n.s: split node.
@@ -70,8 +75,8 @@ NodesLoop:
 				children: nodes{
 					{s: n.s[len(path):], params: n.params, children: n.children, handler: n.handler},
 				},
-				handler:    handler,
-				firstLevel: n.firstLevel,
+				handler: handler,
+				isRoot:  n.isRoot,
 			}
 		} else if len(path) > len(n.s) { // n.s fully matched first part of s: see subnodes for the rest.
 			n.children.makeChild(path[len(n.s):], params, handler, false)
@@ -85,45 +90,38 @@ NodesLoop:
 			n.params = params
 			n.handler = handler
 		}
+		nn.sort()
 		return
 	}
-	*nn = append(*nn, &node{s: path, params: params, handler: handler, firstLevel: firstLevel}) // Not a single byte match on same-level nodes: append a new one.
+	*nn = append(*nn, &node{s: path, params: params, handler: handler, isRoot: isRoot}) // Not a single byte match on same-level nodes: append a new one.
+	nn.sort()
 }
 
-func (nn nodes) findChild(path string, params []string) (*node, []string) {
+func (nn nodes) findChild(path string) *node {
 	for _, n := range nn {
 		if n.s == ":" { // Handle parameter node.
 			paramEnd := strings.IndexByte(path, '/')
 			if paramEnd == -1 { // Path ends with the parameter.
-				if n.handler == nil {
-					return nil, nil
-				}
-				return n, append(params, path)
+				return n
 			}
-			return n.children.findChild(path[paramEnd:], append(params, path[:paramEnd]))
+			return n.children.findChild(path[paramEnd:])
 		}
 		if !strings.HasPrefix(path, n.s) { // Node doesn't match beginning of path.
 			continue
 		}
 		if len(path) == len(n.s) { // Node matched until the end of path.
-			if n.handler == nil {
-				return nil, nil
-			}
-			return n, params
+			return n
 		}
-		child, params2 := n.children.findChild(path[len(n.s):], params)
+		child := n.children.findChild(path[len(n.s):])
 		if child == nil || child.handler == nil {
-			if n.isWildcard() && !(n.firstLevel && (n.s == "/" || len(n.children) > 0)) { // If node is a wildcard, don't use it when it's first in tree and it's root or has children.
-				if n.handler == nil {
-					return nil, nil
-				}
-				return n, append(params, path[len(n.s):])
+			if !n.isRoot && n.isWildcard() { // If node is a wildcard, don't use it when it's root.
+				return n
 			}
 			continue // No match from children and current node is not a wildcard, maybe there is a parameter in next same-level node.
 		}
-		return child, params2
+		return child
 	}
-	return nil, nil
+	return nil
 }
 
 // sort puts nodes with most subnodes on top and plain strings before parameter.
@@ -137,7 +135,4 @@ func (nn nodes) sort() {
 		}
 		return nn[i].countChildren() > nn[j].countChildren()
 	})
-	for _, n := range nn {
-		n.children.sort()
-	}
 }
