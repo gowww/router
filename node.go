@@ -20,7 +20,17 @@ func (n *node) String() string {
 }
 
 func (n *node) string(level int) (s string) {
-	s += fmt.Sprintf("%s%s  %v  %v  %v\n", strings.Repeat("\t", level), n.s, n.params, n.handler, n.isRoot)
+	s = fmt.Sprintf("%s%s", strings.Repeat("\t", level), n.s)
+	if n.params != nil {
+		s = fmt.Sprintf("%s  %v", s, n.params)
+	}
+	if n.handler != nil {
+		s = fmt.Sprintf("%s  %v", s, n.handler)
+	}
+	if n.isRoot {
+		s += "  root"
+	}
+	s += "\n"
 	for _, n := range n.children {
 		s += n.string(level + 1)
 	}

@@ -77,7 +77,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		} else {
 			s += part
 			if i == len(parts)-1 { // Last part: make it with handler.
-				if isWildcard(s) {
+				if s != "/" && isWildcard(s) {
 					if params == nil {
 						params = make(map[string]int)
 					}
