@@ -57,7 +57,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 A named parameter begins with `:` and matches any value until the next `/` in path.
 
-To retreive it's value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
+To retreive its value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
 It will return the value as a string (empty if the parameter doesn't exist).
 
 Example, with a parameter `:id`:
