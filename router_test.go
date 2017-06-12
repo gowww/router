@@ -74,10 +74,13 @@ func init() {
 	}
 }
 
-func TestFindChild(t *testing.T) {
+func TestString(t *testing.T) {
 	fmt.Println(rt)
+}
+
+func TestFindChild(t *testing.T) {
 	for _, reqt := range reqTests {
-		n, _ := rt.trees[http.MethodGet].findChild(reqt.path, nil)
+		n := rt.trees[http.MethodGet].findChild(reqt.path)
 		if n == nil {
 			if reqt.rtTest != nil {
 				t.Errorf("%q not found", reqt.path)
@@ -108,20 +111,24 @@ func TestServeHTTP(t *testing.T) {
 func TestParameters(t *testing.T) {
 	id := "12"
 	office := "london"
+	wildcard := "one/two"
 	rt := New()
-	rt.Get("/users/:id/contact/:office", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	rt.Get("/users/:id/contact/:office/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if v := Parameter(r, "id"); v != id {
 			t.Errorf("id: want %q, got %q", id, v)
 		}
 		if v := Parameter(r, "office"); v != office {
-			t.Errorf("id: want %q, got %q", office, v)
+			t.Errorf("office: want %q, got %q", office, v)
+		}
+		if v := Parameter(r, "*"); v != wildcard {
+			t.Errorf("*: want %q, got %q", wildcard, v)
 		}
 		if v := Parameter(r, "unknown"); v != "" {
-			t.Errorf("id: want %q, got %q", "", v)
+			t.Errorf("unknown: want %q, got %q", "", v)
 		}
 	}))
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/users/"+id+"/contact/"+office, nil)
+	r := httptest.NewRequest(http.MethodGet, "/users/"+id+"/contact/"+office+"/"+wildcard, nil)
 	rt.ServeHTTP(w, r)
 }
 
@@ -154,6 +161,7 @@ func TestMissingFirstSlash(t *testing.T) {
 	}()
 	rt := New()
 	rt.Get("user", nil)
+	fmt.Println(rt)
 }
 
 func TestDuplicatedRoutes(t *testing.T) {
@@ -165,6 +173,17 @@ func TestDuplicatedRoutes(t *testing.T) {
 	rt := New()
 	rt.Get("/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	rt.Get("/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	fmt.Println(rt)
+}
+
+func TestAnonymousParameter(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fail()
+		}
+	}()
+	rt := New()
+	rt.Get("/:", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	fmt.Println(rt)
 }
 
@@ -190,7 +209,7 @@ func TestNotFoundHandler(t *testing.T) {
 func BenchmarkFindRoute(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for _, reqt := range reqTests {
-			rt.trees[http.MethodGet].findChild(reqt.path, nil)
+			rt.trees[http.MethodGet].findChild(reqt.path)
 		}
 	}
 }
