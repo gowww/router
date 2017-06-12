@@ -19,21 +19,21 @@ const (
 // The Router is the main structure of this package.
 type Router struct {
 	NotFoundHandler http.Handler
-	trees           map[string]*nodes // trees is a map of methods with their path nodes.
+	trees           map[string]*node // trees is a map of methods with their path nodes.
 }
 
 // New returns a fresh rounting unit.
 func New() *Router {
 	return &Router{
-		trees: make(map[string]*nodes),
+		trees: make(map[string]*node),
 	}
 }
 
 func (rt *Router) String() (s string) {
-	for method, nodes := range rt.trees {
+	for method, node := range rt.trees {
 		s += method + "\n"
-		for _, n := range *nodes {
-			s += n.string(1)
+		for _, n := range node.children {
+			s += n.string(strings.Repeat(" ", len(method)+1))
 		}
 	}
 	return
@@ -46,11 +46,10 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 	}
 
 	// Get (or set) tree for method.
-	nn := rt.trees[method]
-	if nn == nil {
-		var n nodes
-		rt.trees[method] = &n
-		nn = &n
+	n := rt.trees[method]
+	if n == nil {
+		n = new(node)
+		rt.trees[method] = n
 	}
 
 	// Put parameters in their own node.
@@ -63,16 +62,16 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 			if len(part) < 2 {
 				panic(fmt.Errorf("router: path %q has anonymous field", path))
 			}
-			nn.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
+			n.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
 			if params == nil {
 				params = make(map[string]int)
 			}
 			params[part[1:]] = i   // Store parameter name with part index.
 			s += ":"               // Only keep "/:".
 			if i == len(parts)-1 { // Parameter is the last part: make it with handler.
-				nn.makeChild(s, params, handler, false)
+				n.makeChild(s, params, handler, false)
 			} else {
-				nn.makeChild(s, params, nil, false)
+				n.makeChild(s, params, nil, false)
 			}
 		} else {
 			s += part
@@ -83,7 +82,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 					}
 					params["*"] = i
 				}
-				nn.makeChild(s, params, handler, (i == 0 && s == "/"))
+				n.makeChild(s, params, handler, (i == 0 && s == "/"))
 			}
 		}
 	}
@@ -124,8 +123,8 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Handle OPTIONS request.
 
-	if trees := rt.trees[r.Method]; trees != nil {
-		n := trees.findChild(r.URL.Path)
+	if n := rt.trees[r.Method]; n != nil {
+		n = n.findChild(r.URL.Path)
 		if n != nil && n.handler != nil {
 			// Store parameters in request's context.
 			if n.params != nil {
