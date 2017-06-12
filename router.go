@@ -181,7 +181,7 @@ func splitPath(path string) []string {
 	if path[0] == '/' {
 		path = path[1:]
 	}
-	// Count slashes to avoid growing slice.
+	// Count parts to avoid growing slice.
 	var n int
 	for i := 0; i < len(path); i++ {
 		n++
@@ -189,7 +189,7 @@ func splitPath(path string) []string {
 		if p == -1 {
 			break
 		}
-		if p == len(path)-1 { // Trailing slash
+		if p == len(path)-1 { // Also count trailing slash.
 			n++
 		}
 		i = p + i
