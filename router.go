@@ -178,5 +178,31 @@ func isWildcard(s string) bool {
 }
 
 func splitPath(path string) []string {
-	return strings.Split(path, "/")[1:]
+	if path[0] == '/' {
+		path = path[1:]
+	}
+	// Count slashes to avoid growing slice.
+	var n int
+	for i := 0; i < len(path); i++ {
+		n++
+		p := strings.IndexByte(path[i:], '/')
+		if p == -1 {
+			break
+		}
+		if p == len(path)-1 { // Trailing slash
+			n++
+		}
+		i = p + i
+	}
+	s := make([]string, 0, n)
+	for {
+		p := strings.IndexByte(path, '/')
+		if p == -1 {
+			s = append(s, path)
+			break
+		}
+		s = append(s, path[:p])
+		path = path[p+1:]
+	}
+	return s
 }
