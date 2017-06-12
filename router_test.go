@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -52,6 +53,19 @@ var (
 		{path: "/user/contact/office/lo", rtTest: nil},
 		{path: "/user/contact", rtTest: nil},
 		{path: "/page/notfound", rtTest: nil},
+	}
+
+	splitPathTests = []*struct {
+		path  string
+		split []string
+	}{
+		{path: "/", split: []string{""}},
+		{path: "/one", split: []string{"one"}},
+		{path: "/one/", split: []string{"one", ""}},
+		{path: "/one/two", split: []string{"one", "two"}},
+		{path: "/one/two/", split: []string{"one", "two", ""}},
+		{path: "/one/two/three/four/five/six/seven", split: []string{"one", "two", "three", "four", "five", "six", "seven"}},
+		{path: "/one/two/three/four/five/six/seven/", split: []string{"one", "two", "three", "four", "five", "six", "seven", ""}},
 	}
 )
 
@@ -220,5 +234,32 @@ func BenchmarkServeHTTP(b *testing.B) {
 		for _, reqt := range reqTests {
 			rt.ServeHTTP(w, httptest.NewRequest(http.MethodGet, reqt.path, nil))
 		}
+	}
+}
+
+func TestSplitPath(t *testing.T) {
+	for _, tc := range splitPathTests {
+		split := splitPath(tc.path)
+		if len(split) != len(tc.split) {
+			t.Errorf("%q: want %q, got %q", tc.path, tc.split, split)
+		} else {
+			for i, part := range tc.split {
+				if part != split[i] {
+					t.Errorf("%q: want %q, got %q", tc.path, tc.split, split)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkSplitPathStandard(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		strings.Split("/one/two/three/four/five/six/seven"[1:], "/")
+	}
+}
+
+func BenchmarkSplitPathCustom(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		splitPath("/one/two/three/four/five/six/seven")
 	}
 }
