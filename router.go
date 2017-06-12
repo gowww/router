@@ -55,7 +55,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 	// Put parameters in their own node.
 	parts := splitPath(path)
 	var s string
-	var params map[string]int
+	var params map[string]uint16
 	for i, part := range parts {
 		s += "/"
 		if len(part) > 0 && part[0] == ':' { // It's a parameter.
@@ -64,11 +64,11 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 			}
 			n.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
 			if params == nil {
-				params = make(map[string]int)
+				params = make(map[string]uint16)
 			}
-			params[part[1:]] = i   // Store parameter name with part index.
-			s += ":"               // Only keep "/:".
-			if i == len(parts)-1 { // Parameter is the last part: make it with handler.
+			params[part[1:]] = uint16(i) // Store parameter name with part index.
+			s += ":"                     // Only keep "/:".
+			if i == len(parts)-1 {       // Parameter is the last part: make it with handler.
 				n.makeChild(s, params, handler, false)
 			} else {
 				n.makeChild(s, params, nil, false)
@@ -78,9 +78,9 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 			if i == len(parts)-1 { // Last part: make it with handler.
 				if s != "/" && isWildcard(s) {
 					if params == nil {
-						params = make(map[string]int)
+						params = make(map[string]uint16)
 					}
-					params["*"] = i
+					params["*"] = uint16(i)
 				}
 				n.makeChild(s, params, handler, (i == 0 && s == "/"))
 			}
@@ -149,7 +149,7 @@ func Parameter(r *http.Request, key string) string {
 	if ok { // Parameters already parsed.
 		return params[key]
 	}
-	paramsIdx, ok := r.Context().Value(contextKeyParamsIdx).(map[string]int)
+	paramsIdx, ok := r.Context().Value(contextKeyParamsIdx).(map[string]uint16)
 	if !ok {
 		return ""
 	}
@@ -158,9 +158,9 @@ func Parameter(r *http.Request, key string) string {
 	for name, idx := range paramsIdx {
 		switch name {
 		case "*":
-			for idx < len(parts) {
+			for idx < uint16(len(parts)) {
 				params[name] += parts[idx]
-				if idx < len(parts)-1 {
+				if idx < uint16(len(parts))-1 {
 					params[name] += "/"
 				}
 				idx++
@@ -182,7 +182,7 @@ func splitPath(path string) []string {
 		path = path[1:]
 	}
 	// Count parts to avoid growing slice.
-	var n int
+	var n uint16
 	for i := 0; i < len(path); i++ {
 		n++
 		p := strings.IndexByte(path[i:], '/')

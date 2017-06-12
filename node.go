@@ -9,7 +9,7 @@ import (
 
 type node struct {
 	s        string
-	params   map[string]int // Parameter's names from the parent node to this one, and their path part index (between "/").
+	params   map[string]uint16 // Parameter's names from the parent node to this one, and their path part index (between "/").
 	children []*node
 	handler  http.Handler
 	isRoot   bool // Need to know if node is root to not use it as wildcard.
@@ -46,7 +46,7 @@ func (n *node) countChildren() (i int) {
 }
 
 // makeChild adds a node to the tree.
-func (n *node) makeChild(path string, params map[string]int, handler http.Handler, isRoot bool) {
+func (n *node) makeChild(path string, params map[string]uint16, handler http.Handler, isRoot bool) {
 NodesLoop:
 	for _, child := range n.children {
 		minlen := len(child.s)
@@ -128,7 +128,7 @@ func (n *node) findChild(path string) *node {
 	return nil
 }
 
-// sort puts nodes with most subnodes on top and plain strings before parameter.
+// sortChildren puts children with most subnodes on top and plain strings before parameter.
 func (n *node) sortChildren() {
 	sort.Slice(n.children, func(i, j int) bool {
 		if n.children[i].s == ":" {
