@@ -8,17 +8,11 @@ import (
 )
 
 type node struct {
-	s           string
-	params      map[string]int // Parameter's names from the parent node to this one, and their path part index (between "/").
-	children    []*node
-	handler     http.Handler
-	isRoot      bool // Need to know if node is root to not use it as wildcard.
-	childrenMin byte // Lower byte (ex: "a") in children.
-	childrenMax byte // Greater byte (ex: "z") in children.
-}
-
-func (n *node) String() string {
-	return n.s
+	s        string
+	params   map[string]int // Parameter's names from the parent node to this one, and their path part index (between "/").
+	children []*node
+	handler  http.Handler
+	isRoot   bool // Need to know if node is root to not use it as wildcard.
 }
 
 func (n *node) string(prefix string) (s string) {
@@ -41,14 +35,6 @@ func (n *node) string(prefix string) (s string) {
 
 func (n *node) isWildcard() bool {
 	return isWildcard(n.s)
-}
-
-func (n *node) setChildrenMinMax(b byte) {
-	if b < n.childrenMin {
-		n.childrenMin = b
-	} else if b > n.childrenMax {
-		n.childrenMax = b
-	}
 }
 
 func (n *node) countChildren() (i int) {

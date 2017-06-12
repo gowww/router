@@ -60,7 +60,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 		s += "/"
 		if len(part) > 0 && part[0] == ':' { // It's a parameter.
 			if len(part) < 2 {
-				panic(fmt.Errorf("router: path %q has anonymous field", path))
+				panic(fmt.Errorf("router: path %q has anonymous parameter", path))
 			}
 			n.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
 			if params == nil {
@@ -160,6 +160,9 @@ func Parameter(r *http.Request, key string) string {
 		case "*":
 			for idx < len(parts) {
 				params[name] += parts[idx]
+				if idx < len(parts)-1 {
+					params[name] += "/"
+				}
 				idx++
 			}
 		default:
