@@ -95,7 +95,7 @@ rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
   	fmt.Fprintf(w, "Page of user #%s", id)
   }))
   ```
-</details>
+</details>  
 
 #### Regular expressions
 
@@ -132,7 +132,7 @@ rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWri
   	fmt.Fprintf(w, "Page of %s", name)
   }))
   ```
-</details>
+</details>  
 
 Don't forget that regular expressions can significantly reduce performance.
 
@@ -181,7 +181,7 @@ rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
   	fmt.Fprintf(w, "Get movie #%s", name)
   }))
   ```
-</details>
+</details>  
 
 Note that a trailing slash in a request path is always trimmed and the client redirected (better for SEO).  
 For example, a request for `/files/` will be redirected to `/files` and will never match a `/files/` route.  
