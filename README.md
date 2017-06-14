@@ -80,18 +80,22 @@ rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 }))
 ```
 
-No surprise, a parameter can be used on the same level as a static route, without conflict:
+<details>
+  <summary>No surprise</summary>
 
-```Go
-rt.Get("/users/all", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "All users page")
-}))
+  A parameter can be used on the same level as a static route, without conflict:
 
-rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	id := router.Parameter(r, "id")
-	fmt.Fprintf(w, "Page of user #%s", id)
-}))
-```
+  ```Go
+  rt.Get("/users/all", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	fmt.Fprint(w, "All users page")
+  }))
+  
+  rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	id := router.Parameter(r, "id")
+  	fmt.Fprintf(w, "Page of user #%s", id)
+  }))
+  ```
+</details>
 
 #### Regular expressions
 
@@ -112,19 +116,23 @@ rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWri
 }))
 ```
 
-No surprise, a parameter with a regular expression can be used on the same level as a simple parameter, without conflict:
+<details>
+  <summary>No surprise</summary>
 
-```Go
-rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	id := router.Parameter(r, "id")
-	fmt.Fprintf(w, "Page of user #%s", id)
-}))
+  A parameter with a regular expression can be used on the same level as a simple parameter, without conflict:
 
-rt.Get("/users/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	name := router.Parameter(r, "name")
-	fmt.Fprintf(w, "Page of %s", name)
-}))
-```
+  ```Go
+  rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	id := router.Parameter(r, "id")
+  	fmt.Fprintf(w, "Page of user #%s", id)
+  }))
+  
+  rt.Get("/users/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	name := router.Parameter(r, "name")
+  	fmt.Fprintf(w, "Page of %s", name)
+  }))
+  ```
+</details>
 
 Don't forget that regular expressions can significantly reduce performance.
 
@@ -140,38 +148,42 @@ rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 }))
 ```
 
-No surprise, deeper route paths with the same prefix as the wildcard will take precedence, without conflict:
+<details>
+  <summary>No surprise</summary>
 
-```Go
-// Will match:
-// 	/files/one
-// 	/files/two
-// 	...
-rt.Get("/files/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {kv
-	name := router.Parameter(r, "name")
-	fmt.Fprintf(w, "Get root file #%s", name)
-}))
+  Deeper route paths with the same prefix as the wildcard will take precedence, without conflict:
 
-// Will match:
-// 	/files/one/...
-// 	/files/two/...
-// 	...
-rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	filepath := router.Parameter(r, "*")
-	fmt.Fprintf(w, "Get file %s", filepath)
-}))
+  ```Go
+  // Will match:
+  // 	/files/one
+  // 	/files/two
+  // 	...
+  rt.Get("/files/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {kv
+  	name := router.Parameter(r, "name")
+  	fmt.Fprintf(w, "Get root file #%s", name)
+  }))
+  
+  // Will match:
+  // 	/files/one/...
+  // 	/files/two/...
+  // 	...
+  rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	filepath := router.Parameter(r, "*")
+  	fmt.Fprintf(w, "Get file %s", filepath)
+  }))
+  
+  // Will match:
+  // 	/files/movies/one
+  // 	/files/movies/two
+  // 	...
+  rt.Get("/files/movies/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  	name := router.Parameter(r, "name")
+  	fmt.Fprintf(w, "Get movie #%s", name)
+  }))
+  ```
+</details>
 
-// Will match:
-// 	/files/movies/one
-// 	/files/movies/two
-// 	...
-rt.Get("/files/movies/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	name := router.Parameter(r, "name")
-	fmt.Fprintf(w, "Get movie #%s", name)
-}))
-```
-
-Note that a trailing slash in a request path is always trimmed and the client redirected (good for SEO).  
+Note that a trailing slash in a request path is always trimmed and the client redirected (better for SEO).  
 For example, a request for `/files/` will be redirected to `/files` and will never match a `/files/` route.  
 In other words, `/files` and `/files/` are two different routes.
 
