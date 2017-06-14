@@ -2,12 +2,23 @@
 
 Package [router](https://godoc.org/github.com/gowww/router) provides a lightning fast HTTP router.
 
+- [Features](#features)
+- [Installing](#installing)
+- [Usage](#usage)
+  - [Parameters](#parameters)
+    - [Named](#named)
+    - [Regular expressions](#regular-expressions)
+    - [Wildcard](#wildcard)
+  - [Static files](#static-files)
+  - [Custom "not found" handler](#custom-not-found-handler)
+
 ## Features
 
   - Extreme performance: [sub-microsecond routing](https://gist.github.com/arthurwhite/bb632f6b104deb2a50ce476c25f7bec2) in most cases
   - Full compatibility with the [http.Handler](https://golang.org/pkg/net/http/#Handler) interface
   - Generic: no magic methods, bring your own handlers
-  - Path parameters, wildcards and smart prioritized routes
+  - Path parameters, regular expressions and wildcards
+  - Smart prioritized routes
   - Zero memory allocation during serving (unless for parameters)
   - Respecting the principle of least surprise
   - Tested and used in production
@@ -82,6 +93,41 @@ rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 }))
 ```
 
+#### Regular expressions
+
+If a parameter must match an exact pattern (number only, for example), you can also set a [regular expression](https://golang.org/pkg/regexp/syntax) constraint just after the parameter name and another `:`:
+
+```Go
+rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	id := router.Parameter(r, "id")
+	fmt.Fprintf(w, "Page of user #%s", id)
+}))
+```
+
+If you don't need tho retreive the parameter value and just want to use a regular expression, you can omit the parameter name:
+
+```Go
+rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "Prison Break S06 — Coming soon…")
+}))
+```
+
+No surprise, a parameter with a regular expression can be used on the same level as a simple parameter, without conflict:
+
+```Go
+rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	id := router.Parameter(r, "id")
+	fmt.Fprintf(w, "Page of user #%s", id)
+}))
+
+rt.Get("/users/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	name := router.Parameter(r, "name")
+	fmt.Fprintf(w, "Page of %s", name)
+}))
+```
+
+Don't forget that regular expressions can significantly reduce performance.
+
 #### Wildcard
 
 A trailing slash in a route path is significant.  
@@ -101,7 +147,7 @@ No surprise, deeper route paths with the same prefix as the wildcard will take p
 // 	/files/one
 // 	/files/two
 // 	...
-rt.Get("/files/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+rt.Get("/files/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {kv
 	name := router.Parameter(r, "name")
 	fmt.Fprintf(w, "Get root file #%s", name)
 }))
