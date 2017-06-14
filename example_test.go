@@ -18,8 +18,13 @@ func Example() {
 	}))
 
 	// Path parameter
-	rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Get user %s", router.Parameter(r, "id"))
+	rt.Get("/users/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Get user %s", router.Parameter(r, "name"))
+	}))
+
+	// Path parameter with regular expression
+	rt.Get(`users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Page of user #%s", router.Parameter(r, "id"))
 	}))
 
 	// Path parameter + Trailing slash for wildcard
