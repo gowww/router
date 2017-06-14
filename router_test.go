@@ -29,7 +29,10 @@ var (
 		{path: "/user", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/us", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/:page", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: `/user/:id:^\d$`, handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/user/:item", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: `/user/:id:^\d+$`, handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/user/contact", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/user/files/", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/users/:id/carriage", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/users/:id/car", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
@@ -42,17 +45,19 @@ var (
 
 	reqTests = []*reqTest{
 		{path: "/", rtTest: findRtTest("/")},
-		{path: "/user", rtTest: findRtTest("/user")},
 		{path: "/about", rtTest: findRtTest("/:page")},
+		{path: "/usage", rtTest: findRtTest("/usage")},
+		{path: "/user", rtTest: findRtTest("/user")},
+		{path: "/user/1", rtTest: findRtTest(`/user/:id:^\d$`)},
+		{path: "/user/12", rtTest: findRtTest(`/user/:id:^\d+$`)},
+		{path: "/user/contact", rtTest: findRtTest("/user/contact")},
+		{path: "/user/contact/office/london", rtTest: findRtTest("/user/contact/office/london")},
+		{path: "/user/files", rtTest: findRtTest("/user/:item")},
 		{path: "/user/files/foo", rtTest: findRtTest("/user/files/")},
 		{path: "/user/files/foo/bar", rtTest: findRtTest("/user/files/")},
-		{path: "/user/files", rtTest: findRtTest("/user/:item")},
-		{path: "/user/contact/office/london", rtTest: findRtTest("/user/contact/office/london")},
-		{path: "/usage", rtTest: findRtTest("/usage")},
-		{path: "/users/notfound", rtTest: nil},
-		{path: "/user/contact/office/lo", rtTest: nil},
-		{path: "/user/contact", rtTest: nil},
 		{path: "/page/notfound", rtTest: nil},
+		{path: "/user/contact/office/lo", rtTest: nil},
+		{path: "/users/notfound", rtTest: nil},
 	}
 
 	splitPathTests = []*struct {
@@ -198,6 +203,17 @@ func TestAnonymousParameter(t *testing.T) {
 	}()
 	rt := New()
 	rt.Get("/:", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	fmt.Println(rt)
+}
+
+func TestEmptyRegexp(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fail()
+		}
+	}()
+	rt := New()
+	rt.Get("/:id:", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	fmt.Println(rt)
 }
 
