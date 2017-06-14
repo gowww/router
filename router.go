@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -59,19 +60,37 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 	for i, part := range parts {
 		s += "/"
 		if len(part) > 0 && part[0] == ':' { // It's a parameter.
-			if len(part) < 2 {
-				panic(fmt.Errorf("router: path %q has anonymous parameter", path))
+			n.makeChild(s, params, nil, nil, (i == 0 && s == "/")) // Make child without ":".
+			part = part[1:]
+			reSep := strings.IndexByte(part, ':') // Search for a name/regexp separator.
+			var re *regexp.Regexp
+			if reSep == -1 { // No regular expression.
+				if part == "" {
+					panic(fmt.Errorf("router: path %q has anonymous parameter", path))
+				}
+				if params == nil {
+					params = make(map[string]uint16)
+				}
+				params[part] = uint16(i) // Store parameter name with part index.
+
+			} else { // Parameter comes with regular expression.
+				if name := part[:reSep]; name != "" {
+					if params == nil {
+						params = make(map[string]uint16)
+					}
+					params[name] = uint16(i) // Store parameter name with part index.
+				}
+				res := part[reSep+1:]
+				if res == "" {
+					panic(fmt.Errorf("router: path %q has empty regular expression", path))
+				}
+				re = regexp.MustCompile(res)
 			}
-			n.makeChild(s, params, nil, (i == 0 && s == "/")) // Make child without ":"
-			if params == nil {
-				params = make(map[string]uint16)
-			}
-			params[part[1:]] = uint16(i) // Store parameter name with part index.
-			s += ":"                     // Only keep "/:".
-			if i == len(parts)-1 {       // Parameter is the last part: make it with handler.
-				n.makeChild(s, params, handler, false)
+			s += ":"               // Only keep colon to represent parameter in tree.
+			if i == len(parts)-1 { // Parameter is the last part: make it with handler.
+				n.makeChild(s, params, re, handler, false)
 			} else {
-				n.makeChild(s, params, nil, false)
+				n.makeChild(s, params, re, nil, false)
 			}
 		} else {
 			s += part
@@ -82,7 +101,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 					}
 					params["*"] = uint16(i)
 				}
-				n.makeChild(s, params, handler, (i == 0 && s == "/"))
+				n.makeChild(s, params, nil, handler, (i == 0 && s == "/"))
 			}
 		}
 	}
@@ -173,10 +192,16 @@ func Parameter(r *http.Request, key string) string {
 	return params[key]
 }
 
+// isWildcard tells if s ends with '/'.
 func isWildcard(s string) bool {
 	return s[len(s)-1] == '/'
 }
 
+// splitPath returns a slice of path parts (divided by '/').
+//
+// Example:
+//	splitPath("/one/two") == []string{"one", "two"}
+//	splitPath("/one/two/") == []string{"one", "two", ""}
 func splitPath(path string) []string {
 	if path[0] == '/' {
 		path = path[1:]
