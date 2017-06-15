@@ -19,7 +19,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
   - Generic: no magic methods, bring your own handlers
   - Path parameters, regular expressions and wildcards
   - Smart prioritized routes
-  - Zero memory allocation during serving (unless for parameters)
+  - Zero memory allocations during serving (but for parameters)
   - Respecting the principle of least surprise
   - Tested and used in production
 
@@ -71,7 +71,7 @@ A named parameter begins with `:` and matches any value until the next `/` in pa
 To retreive its value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Router.Parameter).  
 It will return the value as a string (empty if the parameter doesn't exist).
 
-Example, with a parameter `:id`:
+Example, with a parameter `id`:
 
 ```Go
 rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +99,7 @@ rt.Get("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 
 #### Regular expressions
 
-If a parameter must match an exact pattern (number only, for example), you can also set a [regular expression](https://golang.org/pkg/regexp/syntax) constraint just after the parameter name and another `:`:
+If a parameter must match an exact pattern (digits only, for example), you can also set a [regular expression](https://golang.org/pkg/regexp/syntax) constraint just after the parameter name and another `:`:
 
 ```Go
 rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.
 }))
 ```
 
-If you don't need tho retreive the parameter value and just want to use a regular expression, you can omit the parameter name:
+If you don't need to retreive the parameter value and just want to use a regular expression, you can omit the parameter name:
 
 ```Go
 rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +139,7 @@ Don't forget that regular expressions can significantly reduce performance.
 #### Wildcard
 
 A trailing slash in a route path is significant.  
-It behaves like a wildcard by matching the beginning of the request's path and keeping the rest as a parameter value, under `*`:
+It behaves like a wildcard by matching the beginning of the request path and keeping the rest as a parameter value, under `*`:
 
 ```Go
 rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +148,7 @@ rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 }))
 ```
 
-Note that a trailing slash in a request path is always trimmed and the client redirected (better for SEO).  
+Note that a trailing slash in a request path is always trimmed and the client redirected.  
 For example, a request for `/files/` will be redirected to `/files` and will never match a `/files/` route.  
 In other words, `/files` and `/files/` are two different routes.
 
@@ -199,7 +199,7 @@ rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static
 
 ### Custom "not found" handler
 
-When a request cannot be matched with a route, a 404 error with an empty body is send by default.
+When a request cannot be matched with a route, a 404 error with an empty body is sent by default.
 
 But you can set your own "not found" handler (and send an HTML page, for example):
 
