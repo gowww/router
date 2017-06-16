@@ -54,7 +54,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 	```
 
    Remember that HTTP methods are case-sensitive and uppercase by convention ([RFC 7231 4.1](https://tools.ietf.org/html/rfc7231#section-4.1)).  
-   So you can directly use shortcuts for standard HTTP methods: [Router.Get](https://godoc.org/github.com/gowww/router#Router.Get), [Router.Post](https://godoc.org/github.com/gowww/router#Router.Post), [Router.Put](https://godoc.org/github.com/gowww/router#Router.Put), [Router.Patch](https://godoc.org/github.com/gowww/router#Router.Patch) and [Router.Delete](https://godoc.org/github.com/gowww/router#Router.Delete).
+   So you can directly use the built-in shortcuts for standard HTTP methods: [Router.Get](https://godoc.org/github.com/gowww/router#Router.Get), [Router.Post](https://godoc.org/github.com/gowww/router#Router.Post), [Router.Put](https://godoc.org/github.com/gowww/router#Router.Put), [Router.Patch](https://godoc.org/github.com/gowww/router#Router.Patch) and [Router.Delete](https://godoc.org/github.com/gowww/router#Router.Delete).
 
 3. Give the router to the server:
 
@@ -68,7 +68,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 A named parameter begins with `:` and matches any value until the next `/` in path.
 
-To retreive its value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Parameter).  
+To retreive the value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Parameter).  
 It will return the value as a string (empty if the parameter doesn't exist).
 
 Example, with a parameter `id`:
@@ -108,7 +108,7 @@ rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.
 }))
 ```
 
-If you don't need to retreive the parameter value and just want to use a regular expression, you can omit the parameter name:
+If you don't need to retreive the parameter value but only use a regular expression, you can omit the parameter name:
 
 ```Go
 rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
