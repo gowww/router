@@ -155,7 +155,7 @@ func (n *node) sortChildren() {
 	sort.Slice(n.children, func(i, j int) bool {
 		a := n.children[i]
 		b := n.children[j]
-		return a.isParameter() && b.isParameter() && (a.re != nil && b.re != nil || a.re != nil && b.re == nil) ||
+		return a.isParameter() && b.isParameter() && a.re != nil ||
 			!a.isParameter() && b.isParameter() ||
 			a.countChildren() > b.countChildren()
 	})
