@@ -24,10 +24,10 @@ var (
 	rt = New()
 
 	rtTests = []*rtTest{
-		{path: "/", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/usage", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/user", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/us", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
+		{path: "/", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/:page", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: `/user/::^\d$`, handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
 		{path: "/user/:item", handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})},
