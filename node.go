@@ -80,8 +80,8 @@ NodesLoop:
 					{s: child.s[i:], params: child.params, re: child.re, children: child.children, handler: child.handler},
 					{s: path[i:], params: params, re: re, handler: handler},
 				},
-				isRoot: child.isRoot,
 			}
+			// BUG(arthurwhite): Child.s == "/" but child.isRoot == false on first level after this split.
 			return
 		}
 		if len(path) < len(child.s) { // s fully matched first part of n.s: split node.
@@ -93,7 +93,7 @@ NodesLoop:
 					{s: child.s[len(path):], params: child.params, re: child.re, children: child.children, handler: child.handler},
 				},
 				handler: handler,
-				isRoot:  child.isRoot,
+				isRoot:  isRoot,
 			}
 		} else if len(path) > len(child.s) { // n.s fully matched first part of s: see subnodes for the rest.
 			child.makeChild(path[len(child.s):], params, re, handler, false)
@@ -102,14 +102,15 @@ NodesLoop:
 				return
 			}
 			if child.handler != nil { // Handler provided but n.handler already set: route is duplicated.
-				if (re == nil && child.re == nil) || (re != nil && child.re != nil && re.String() == child.re.String()) {
+				if re == nil && child.re == nil || re != nil && child.re != nil && re.String() == child.re.String() {
 					panic("router: two or more routes have same path")
 				}
-				continue NodesLoop
+				continue NodesLoop // It's a parameter with a regular expression: check next child for "same path" error. Otherwise, node will be appended.
 			}
 			child.params = params
 			child.re = re
 			child.handler = handler
+			child.isRoot = isRoot
 		}
 		return
 	}
