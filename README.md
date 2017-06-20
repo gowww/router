@@ -68,7 +68,7 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 A named parameter begins with `:` and matches any value until the next `/` in path.
 
-To retreive the value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Parameter).  
+To retrieve the value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Parameter).  
 It will return the value as a string (empty if the parameter doesn't exist).
 
 Example, with a parameter `id`:
@@ -108,7 +108,7 @@ rt.Get(`/users/:id:^\d+$`, http.HandlerFunc(func(w http.ResponseWriter, r *http.
 }))
 ```
 
-If you don't need to retreive the parameter value but only use a regular expression, you can omit the parameter name:
+If you don't need to retrieve the parameter value but only use a regular expression, you can omit the parameter name:
 
 ```Go
 rt.Get(`/shows/::^prison-break-s06-.+`, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +191,7 @@ In other words, `/files` and `/files/` are two different routes.
 
 For serving static files, like for other routes, just bring your own handler.
 
-Exemple, with the standard [net/http.FileServer](https://golang.org/pkg/net/http#FileServer):
+Example, with the standard [net/http.FileServer](https://golang.org/pkg/net/http#FileServer):
 
 ```Go
 rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
