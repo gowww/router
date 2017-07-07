@@ -53,8 +53,8 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 	}))
 	```
 
-	 Remember that HTTP methods are case-sensitive and uppercase by convention ([RFC 7231 4.1](https://tools.ietf.org/html/rfc7231#section-4.1)).  
-	 So you can directly use the built-in shortcuts for standard HTTP methods: [Router.Get](https://godoc.org/github.com/gowww/router#Router.Get), [Router.Post](https://godoc.org/github.com/gowww/router#Router.Post), [Router.Put](https://godoc.org/github.com/gowww/router#Router.Put), [Router.Patch](https://godoc.org/github.com/gowww/router#Router.Patch) and [Router.Delete](https://godoc.org/github.com/gowww/router#Router.Delete).
+	Remember that HTTP methods are case-sensitive and uppercase by convention ([RFC 7231 4.1](https://tools.ietf.org/html/rfc7231#section-4.1)).  
+	So you can directly use the built-in shortcuts for standard HTTP methods: [Router.Get](https://godoc.org/github.com/gowww/router#Router.Get), [Router.Post](https://godoc.org/github.com/gowww/router#Router.Post), [Router.Put](https://godoc.org/github.com/gowww/router#Router.Put), [Router.Patch](https://godoc.org/github.com/gowww/router#Router.Patch) and [Router.Delete](https://godoc.org/github.com/gowww/router#Router.Delete).
 
 3. Give the router to the server:
 
