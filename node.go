@@ -81,7 +81,9 @@ NodesLoop:
 					{s: path[i:], params: params, re: re, handler: handler},
 				},
 			}
-			// BUG(arthurwhite): Child.s == "/" but child.isRoot == false on first level after this split.
+			// BUG(arthurwhite): If the client has no route for "/" and this split occurs on the first level because of the 2nd byte (just after the leading "/"), the isRoot flag of the parent node ("/") is false.
+			// It's not a problem because it has no handler and will never match a request, but it's not clean.
+			// A first solution would be to let makeChild know the current level in tree, but... All that for this?
 			return
 		}
 		if len(path) < len(child.s) { // s fully matched first part of n.s: split node.
@@ -101,11 +103,11 @@ NodesLoop:
 			if handler == nil { // No handler provided (must be a non-ending path parameter): don't overwrite.
 				return
 			}
-			if child.handler != nil { // Handler provided but n.handler already set: route is duplicated.
+			if child.handler != nil { // Handler provided but child.handler already set: it's a parameter with another re value, or route is duplicated.
 				if re == nil && child.re == nil || re != nil && child.re != nil && re.String() == child.re.String() {
 					panic("router: two or more routes have same path")
 				}
-				continue NodesLoop // It's a parameter with a regular expression: check next child for "same path" error. Otherwise, node will be appended.
+				continue NodesLoop // It's a parameter with a different regular expression: check next child for "same path" error. Otherwise, node will be appended.
 			}
 			child.params = params
 			child.re = re
