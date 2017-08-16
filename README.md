@@ -66,10 +66,10 @@ Package [router](https://godoc.org/github.com/gowww/router) provides a lightning
 
 #### Named
 
-A named parameter begins with `:` and matches any value until the next `/` in path.
+A named parameter begins with `:` and matches any value until the next `/` or end of path.
 
 To retrieve the value (stored in request's context), ask [Parameter](https://godoc.org/github.com/gowww/router#Parameter).  
-It will return the value as a string (empty if the parameter doesn't exist).
+It will return the value as a string.
 
 Example, with a parameter `id`:
 
@@ -139,7 +139,8 @@ rt.Get("/users/:name", http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 #### Wildcard
 
 A trailing slash in a route path is significant.  
-It behaves like a wildcard by matching the beginning of the request path and keeping the rest as a parameter value, under `*`:
+It behaves like a wildcard by matching the beginning of the request path.  
+The rest of the request path becomes the parameter value of `*`:
 
 ```Go
 rt.Get("/files/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +200,7 @@ rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static
 
 ### Custom "not found" handler
 
-When a request cannot be matched with a route, a 404 error with an empty body is sent by default.
+When a request match no route, a 404 error with an empty body is sent by default.
 
 But you can set your own "not found" handler (and send an HTML page, for example):
 
@@ -209,4 +210,4 @@ rt.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 })
 ```
 
-Note that is this case, it's up to you to set the correct status code (normally 404) for the response.
+Note that in this case, it's up to you to set the correct status code (normally 404) of the response.
