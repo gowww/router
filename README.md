@@ -200,14 +200,13 @@ rt.Get("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static
 
 ### Custom "not found" handler
 
-When a request match no route, a 404 error with an empty body is sent by default.
+When a request match no route, the response status is set to 404 and an empty body is sent by default.
 
-But you can set your own "not found" handler (and send an HTML page, for example):
+But you can set your own "not found" handler.  
+In this case, it's up to you to set the response status code (normally 404):
 
 ```Go
 rt.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 })
 ```
-
-Note that in this case, it's up to you to set the correct status code (normally 404) of the response.
