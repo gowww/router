@@ -80,10 +80,8 @@ NodesLoop:
 					{s: child.s[i:], params: child.params, re: child.re, children: child.children, handler: child.handler},
 					{s: path[i:], params: params, re: re, handler: handler},
 				},
+				isRoot: n.s == "" && i == 1, // Only the tree root has an empty string: a split on its children's 2nd byte makes the "/" root node.
 			}
-			// BUG(arthurwhite): If the client has no route for "/" and this split occurs on the first level because of the 2nd byte (just after the leading "/"), the isRoot flag of the parent node ("/") is false.
-			// It's not a problem because it has no handler and will never match a request, but it's not clean.
-			// A first solution would be to let makeChild know the current level in tree, but... All that for this?
 			return
 		}
 		if len(path) < len(child.s) { // s fully matched first part of n.s: split node.
