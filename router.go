@@ -11,11 +11,7 @@ import (
 
 type contextKey int
 
-// Context keys
-const (
-	contextKeyParamsIdx contextKey = iota
-	contextKeyParams
-)
+const contextKeyParamsIdx contextKey = iota
 
 // The Router is the main structure of this package.
 type Router struct {
@@ -54,7 +50,7 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 	}
 
 	// Put parameters in their own node.
-	parts := splitPath(path)
+	parts := strings.Split(path[1:], "/")
 	var s string
 	var params map[string]uint16
 	for i, part := range parts {
@@ -164,70 +160,28 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Parameter returns the value of path parameter.
 // Result is empty if parameter doesn't exist.
 func Parameter(r *http.Request, key string) string {
-	params, ok := r.Context().Value(contextKeyParams).(map[string]string)
-	if ok { // Parameters already parsed.
-		return params[key]
-	}
 	paramsIdx, ok := r.Context().Value(contextKeyParamsIdx).(map[string]uint16)
 	if !ok {
 		return ""
 	}
-	params = make(map[string]string, len(paramsIdx))
-	parts := splitPath(r.URL.Path)
-	for name, idx := range paramsIdx {
-		switch name {
-		case "*":
-			for idx < uint16(len(parts)) {
-				params[name] += parts[idx]
-				if idx < uint16(len(parts))-1 {
-					params[name] += "/"
-				}
-				idx++
-			}
-		default:
-			params[name] = parts[idx]
-		}
+	idx, ok := paramsIdx[key]
+	if !ok {
+		return ""
 	}
-	*r = *r.WithContext(context.WithValue(r.Context(), contextKeyParams, params))
-	return params[key]
+	path := r.URL.Path[1:]
+	for ; idx > 0; idx-- { // Skip previous parts.
+		path = path[strings.IndexByte(path, '/')+1:]
+	}
+	if key == "*" { // Wildcard takes the rest of path.
+		return path
+	}
+	if end := strings.IndexByte(path, '/'); end != -1 {
+		return path[:end]
+	}
+	return path
 }
 
 // isWildcard tells if s ends with '/'.
 func isWildcard(s string) bool {
 	return s[len(s)-1] == '/'
-}
-
-// splitPath returns a slice of path parts (divided by '/').
-//
-// Example:
-//	splitPath("/one/two") == []string{"one", "two"}
-//	splitPath("/one/two/") == []string{"one", "two", ""}
-func splitPath(path string) []string {
-	if path[0] == '/' {
-		path = path[1:]
-	}
-	// Count parts to avoid growing slice.
-	var n uint16
-	for i := 0; i < len(path); i++ {
-		n++
-		p := strings.IndexByte(path[i:], '/')
-		if p == -1 {
-			break
-		}
-		if p == len(path)-1 { // Also count trailing slash.
-			n++
-		}
-		i = p + i
-	}
-	s := make([]string, 0, n)
-	for {
-		p := strings.IndexByte(path, '/')
-		if p == -1 {
-			s = append(s, path)
-			break
-		}
-		s = append(s, path[:p])
-		path = path[p+1:]
-	}
-	return s
 }

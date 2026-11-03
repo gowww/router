@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -58,19 +57,6 @@ var (
 		{path: "/page/notfound", rtTest: nil},
 		{path: "/user/contact/office/lo", rtTest: nil},
 		{path: "/users/notfound", rtTest: nil},
-	}
-
-	splitPathTests = []*struct {
-		path  string
-		split []string
-	}{
-		{path: "/", split: []string{""}},
-		{path: "/one", split: []string{"one"}},
-		{path: "/one/", split: []string{"one", ""}},
-		{path: "/one/two", split: []string{"one", "two"}},
-		{path: "/one/two/", split: []string{"one", "two", ""}},
-		{path: "/one/two/three/four/five/six/seven", split: []string{"one", "two", "three", "four", "five", "six", "seven"}},
-		{path: "/one/two/three/four/five/six/seven/", split: []string{"one", "two", "three", "four", "five", "six", "seven", ""}},
 	}
 )
 
@@ -246,36 +232,28 @@ func BenchmarkFindRoute(b *testing.B) {
 
 func BenchmarkServeHTTP(b *testing.B) {
 	w := httptest.NewRecorder()
+	var reqs []*http.Request
+	for _, reqt := range reqTests {
+		reqs = append(reqs, httptest.NewRequest(http.MethodGet, reqt.path, nil))
+	}
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		for _, reqt := range reqTests {
-			rt.ServeHTTP(w, httptest.NewRequest(http.MethodGet, reqt.path, nil))
+		for _, r := range reqs {
+			rt.ServeHTTP(w, r)
 		}
 	}
 }
 
-func TestSplitPath(t *testing.T) {
-	for _, tc := range splitPathTests {
-		split := splitPath(tc.path)
-		if len(split) != len(tc.split) {
-			t.Errorf("%q: want %q, got %q", tc.path, tc.split, split)
-		} else {
-			for i, part := range tc.split {
-				if part != split[i] {
-					t.Errorf("%q: want %q, got %q", tc.path, tc.split, split)
-				}
-			}
-		}
-	}
-}
-
-func BenchmarkSplitPathStandard(b *testing.B) {
+func BenchmarkParameter(b *testing.B) {
+	rt := New()
+	rt.Get("/users/:id/contact/:office/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Parameter(r, "id")
+		Parameter(r, "office")
+		Parameter(r, "*")
+	}))
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/users/12/contact/london/one/two", nil)
 	for i := 0; i < b.N; i++ {
-		strings.Split("/one/two/three/four/five/six/seven"[1:], "/")
-	}
-}
-
-func BenchmarkSplitPathCustom(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		splitPath("/one/two/three/four/five/six/seven")
+		rt.ServeHTTP(w, r)
 	}
 }
