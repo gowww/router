@@ -10,7 +10,7 @@ import (
 
 type node struct {
 	s        string
-	params   map[string]uint16 // Parameter's names from the parent node to this one, and their path part index (between "/").
+	params   []string // Parameter names by path part index (between "/"), from the root to this node.
 	re       *regexp.Regexp
 	children []*node
 	handler  http.Handler
@@ -58,15 +58,11 @@ func (n *node) countChildren() (i int) {
 }
 
 // makeChild adds a node to the tree.
-func (n *node) makeChild(path string, params map[string]uint16, re *regexp.Regexp, handler http.Handler, isRoot bool) {
+func (n *node) makeChild(path string, params []string, re *regexp.Regexp, handler http.Handler, isRoot bool) {
 	defer n.sortChildren()
 NodesLoop:
 	for _, child := range n.children {
-		minlen := len(child.s)
-		if len(path) < minlen {
-			minlen = len(path)
-		}
-		for i := 0; i < minlen; i++ {
+		for i := range min(len(child.s), len(path)) {
 			if child.s[i] == path[i] {
 				continue
 			}

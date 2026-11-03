@@ -2,16 +2,11 @@
 package router
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 )
-
-type contextKey int
-
-const contextKeyParamsIdx contextKey = iota
 
 // The Router is the main structure of this package.
 type Router struct {
@@ -52,36 +47,26 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 	// Put parameters in their own node.
 	parts := strings.Split(path[1:], "/")
 	var s string
-	var params map[string]uint16
+	var params []string // Parameter names by path part index ("" for a part without name).
 	for i, part := range parts {
 		s += "/"
 		if len(part) > 0 && part[0] == ':' { // It's a parameter.
 			n.makeChild(s, params, nil, nil, (i == 0 && s == "/")) // Make child without ":".
-			part = part[1:]
-			reSep := strings.IndexByte(part, ':') // Search for a name/regexp separator.
+			// Separate name from regular expression.
+			name, res, hasRe := strings.Cut(part[1:], ":")
 			var re *regexp.Regexp
-			if reSep == -1 { // No regular expression.
-				if part == "" {
+			if !hasRe { // No regular expression.
+				if name == "" {
 					panic(fmt.Errorf("router: path %q has anonymous parameter", path))
 				}
-				if params == nil {
-					params = make(map[string]uint16)
-				}
-				params[part] = uint16(i) // Store parameter name with part index.
-
 			} else { // Parameter comes with regular expression.
-				if name := part[:reSep]; name != "" {
-					if params == nil {
-						params = make(map[string]uint16)
-					}
-					params[name] = uint16(i) // Store parameter name with part index.
-				}
-				res := part[reSep+1:]
 				if res == "" {
 					panic(fmt.Errorf("router: path %q has empty regular expression", path))
 				}
 				re = regexp.MustCompile(res)
 			}
+			params = append(params, make([]string, i-len(params))...) // Pad previous parts without parameter.
+			params = append(params, name)
 			s += ":"               // Only keep colon to represent parameter in tree.
 			if i == len(parts)-1 { // Parameter is the last part: make it with handler.
 				n.makeChild(s, params, re, handler, false)
@@ -92,10 +77,8 @@ func (rt *Router) Handle(method, path string, handler http.Handler) {
 			s += part
 			if i == len(parts)-1 { // Last part: make it with handler.
 				if s != "/" && isWildcard(s) {
-					if params == nil {
-						params = make(map[string]uint16)
-					}
-					params["*"] = uint16(i)
+					params = append(params, make([]string, i-len(params))...) // Pad previous parts without parameter.
+					params = append(params, "*")
 				}
 				n.makeChild(s, params, nil, handler, (i == 0 && s == "/"))
 			}
@@ -141,9 +124,16 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if n := rt.trees[r.Method]; n != nil {
 		n = n.findChild(r.URL.Path)
 		if n != nil && n.handler != nil {
-			// Store parameters in request's context.
-			if n.params != nil {
-				r = r.WithContext(context.WithValue(r.Context(), contextKeyParamsIdx, n.params))
+			path := r.URL.Path[1:] // Store parameters in request.
+			for _, name := range n.params {
+				part, rest, _ := strings.Cut(path, "/")
+				if name == "*" { // Wildcard takes the rest of path.
+					part = path
+				}
+				if name != "" {
+					r.SetPathValue(name, part)
+				}
+				path = rest
 			}
 			n.handler.ServeHTTP(w, r)
 			return
@@ -159,26 +149,9 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Parameter returns the value of path parameter.
 // Result is empty if parameter doesn't exist.
+// It's the same as the standard r.PathValue(key).
 func Parameter(r *http.Request, key string) string {
-	paramsIdx, ok := r.Context().Value(contextKeyParamsIdx).(map[string]uint16)
-	if !ok {
-		return ""
-	}
-	idx, ok := paramsIdx[key]
-	if !ok {
-		return ""
-	}
-	path := r.URL.Path[1:]
-	for ; idx > 0; idx-- { // Skip previous parts.
-		path = path[strings.IndexByte(path, '/')+1:]
-	}
-	if key == "*" { // Wildcard takes the rest of path.
-		return path
-	}
-	if end := strings.IndexByte(path, '/'); end != -1 {
-		return path[:end]
-	}
-	return path
+	return r.PathValue(key)
 }
 
 // isWildcard tells if s ends with '/'.

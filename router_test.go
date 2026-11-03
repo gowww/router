@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -217,13 +217,13 @@ func TestNotFoundHandler(t *testing.T) {
 	if w.Code != status {
 		t.Errorf("status: want %d, got %d", status, w.Code)
 	}
-	if b, _ := ioutil.ReadAll(w.Body); string(b) != body {
+	if b, _ := io.ReadAll(w.Body); string(b) != body {
 		t.Errorf("status: want %q, got %q", body, string(b))
 	}
 }
 
 func BenchmarkFindRoute(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, reqt := range reqTests {
 			rt.trees[http.MethodGet].findChild(reqt.path)
 		}
@@ -236,8 +236,7 @@ func BenchmarkServeHTTP(b *testing.B) {
 	for _, reqt := range reqTests {
 		reqs = append(reqs, httptest.NewRequest(http.MethodGet, reqt.path, nil))
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, r := range reqs {
 			rt.ServeHTTP(w, r)
 		}
@@ -253,7 +252,7 @@ func BenchmarkParameter(b *testing.B) {
 	}))
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/users/12/contact/london/one/two", nil)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		rt.ServeHTTP(w, r)
 	}
 }
